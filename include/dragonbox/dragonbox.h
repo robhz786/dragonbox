@@ -50,7 +50,7 @@ namespace jkj::dragonbox {
 
 		template <class T>
 		constexpr std::size_t value_bits =
-			std::numeric_limits<std::enable_if_t<std::is_unsigned_v<T>, T>>::digits;
+			std::numeric_limits<std::enable_if_t<std::is_unsigned<T>::value, T>>::digits;
 	}
 
 	// These classes expose encoding specs of IEEE-754-like floating-point formats.
@@ -357,13 +357,13 @@ namespace jkj::dragonbox {
 		namespace bits {
 			template <class UInt>
 			inline int countr_zero(UInt n) noexcept {
-				static_assert(std::is_unsigned_v<UInt> && value_bits<UInt> <= 64);
+				static_assert(std::is_unsigned<UInt>::value && value_bits<UInt> <= 64);
 #if defined(__GNUC__) || defined(__clang__)
 #define JKJ_HAS_COUNTR_ZERO_INTRINSIC 1
-				if constexpr (std::is_same_v<UInt, unsigned long>) {
+				if constexpr (std::is_same<UInt, unsigned long>::value) {
 					return __builtin_ctzl(n);
 				}
-				else if constexpr (std::is_same_v<UInt, unsigned long long>) {
+				else if constexpr (std::is_same<UInt, unsigned long long>::value) {
 					return __builtin_ctzll(n);
 				}
 				else {
@@ -372,7 +372,7 @@ namespace jkj::dragonbox {
 				}
 #elif defined(_MSC_VER)
 #define JKJ_HAS_COUNTR_ZERO_INTRINSIC 1
-				if constexpr (std::is_same_v<UInt, unsigned __int64>) {
+				if constexpr (std::is_same<UInt, unsigned __int64>::value) {
 #if defined(_M_X64)
 					return int(_tzcnt_u64(n));
 #else
@@ -757,7 +757,7 @@ namespace jkj::dragonbox {
 
 			template <class UInt, UInt a, std::size_t N>
 			struct table_t {
-				static_assert(std::is_unsigned_v<UInt>);
+				static_assert(std::is_unsigned<UInt>::value);
 				static_assert(a % 2 != 0);
 				static_assert(N > 0);
 
@@ -889,7 +889,7 @@ namespace jkj::dragonbox {
 
 				// Specialize for 64-bit division by 1000.
 				// Ensure that the correctness condition is met.
-				if constexpr (std::is_same_v<UInt, std::uint64_t> && N == 3 &&
+				if constexpr (std::is_same<UInt, std::uint64_t>::value && N == 3 &&
 					max_pow2 + (log::floor_log2_pow10(N + max_pow5) - (N + max_pow5)) < 70)
 				{
 					return wuint::umul128_upper64(n, 0x8312'6e97'8d4f'df3c) >> 9;
@@ -2236,7 +2236,7 @@ namespace jkj::dragonbox {
 						assert(k >= cache_holder<FloatFormat>::min_k &&
 							k <= cache_holder<FloatFormat>::max_k);
 
-						if constexpr (std::is_same_v<FloatFormat, ieee754_binary64>)
+						if constexpr (std::is_same<FloatFormat, ieee754_binary64>::value)
 						{
 							// Compute base index.
 							auto cache_index = (k - cache_holder<FloatFormat>::min_k) /
@@ -2387,7 +2387,7 @@ namespace jkj::dragonbox {
 			using format::exponent_bias;
 			using format::decimal_digits;
 
-			static constexpr int kappa = std::is_same_v<format, ieee754_binary32> ? 1 : 2;
+			static constexpr int kappa = std::is_same<format, ieee754_binary32>::value ? 1 : 2;
 			static_assert(kappa >= 1);
 			static_assert(carrier_bits >= significand_bits + 2 + log::floor_log2_pow10(kappa + 1));
 
@@ -2884,7 +2884,7 @@ namespace jkj::dragonbox {
 					return k;
 				}();
 
-				if constexpr (std::is_same_v<format, ieee754_binary32>) {
+				if constexpr (std::is_same<format, ieee754_binary32>::value) {
 					static_assert(max_power == 7, "Assertion failed! Did you change kappa?");
 
 					constexpr auto const& divtable =
@@ -2924,7 +2924,7 @@ namespace jkj::dragonbox {
 					return s;
 				}
 				else {
-					static_assert(std::is_same_v<format, ieee754_binary64>);
+					static_assert(std::is_same<format, ieee754_binary64>::value);
 					static_assert(max_power == 16, "Assertion failed! Did you change kappa?");
 
 					// Divide by 10^8 and reduce to 32-bits.
@@ -3031,22 +3031,22 @@ namespace jkj::dragonbox {
 
 			static carrier_uint compute_mul(carrier_uint u, cache_entry_type const& cache) noexcept
 			{
-				if constexpr (std::is_same_v<format, ieee754_binary32>) {
+				if constexpr (std::is_same<format, ieee754_binary32>::value) {
 					return wuint::umul96_upper32(u, cache);
 				}
 				else {
-					static_assert(std::is_same_v<format, ieee754_binary64>);
+					static_assert(std::is_same<format, ieee754_binary64>::value);
 					return wuint::umul192_upper64(u, cache);
 				}
 			}
 
 			static std::uint32_t compute_delta(cache_entry_type const& cache, int beta_minus_1) noexcept
 			{
-				if constexpr (std::is_same_v<format, ieee754_binary32>) {
+				if constexpr (std::is_same<format, ieee754_binary32>::value) {
 					return std::uint32_t(cache >> (cache_bits - 1 - beta_minus_1));
 				}
 				else {
-					static_assert(std::is_same_v<format, ieee754_binary64>);
+					static_assert(std::is_same<format, ieee754_binary64>::value);
 					return std::uint32_t(cache.high() >> (carrier_bits - 1 - beta_minus_1));
 				}
 			}
@@ -3057,12 +3057,12 @@ namespace jkj::dragonbox {
 				assert(beta_minus_1 >= 1);
 				assert(beta_minus_1 < 64);
 
-				if constexpr (std::is_same_v<format, ieee754_binary32>) {
+				if constexpr (std::is_same<format, ieee754_binary32>::value) {
 					return ((wuint::umul96_lower64(two_f, cache) >>
 						(64 - beta_minus_1)) & 1) != 0;
 				}
 				else {
-					static_assert(std::is_same_v<format, ieee754_binary64>);
+					static_assert(std::is_same<format, ieee754_binary64>::value);
 					return ((wuint::umul192_middle64(two_f, cache) >>
 						(64 - beta_minus_1)) & 1) != 0;
 				}
@@ -3071,13 +3071,13 @@ namespace jkj::dragonbox {
 			static carrier_uint compute_left_endpoint_for_shorter_interval_case(
 				cache_entry_type const& cache, int beta_minus_1) noexcept
 			{
-				if constexpr (std::is_same_v<format, ieee754_binary32>) {
+				if constexpr (std::is_same<format, ieee754_binary32>::value) {
 					return carrier_uint(
 						(cache - (cache >> (significand_bits + 2))) >>
 						(cache_bits - significand_bits - 1 - beta_minus_1));
 				}
 				else {
-					static_assert(std::is_same_v<format, ieee754_binary64>);
+					static_assert(std::is_same<format, ieee754_binary64>::value);
 					return (cache.high() - (cache.high() >> (significand_bits + 2))) >>
 						(carrier_bits - significand_bits - 1 - beta_minus_1);
 				}
@@ -3086,13 +3086,13 @@ namespace jkj::dragonbox {
 			static carrier_uint compute_right_endpoint_for_shorter_interval_case(
 				cache_entry_type const& cache, int beta_minus_1) noexcept
 			{
-				if constexpr (std::is_same_v<format, ieee754_binary32>) {
+				if constexpr (std::is_same<format, ieee754_binary32>::value) {
 					return carrier_uint(
 						(cache + (cache >> (significand_bits + 1))) >>
 						(cache_bits - significand_bits - 1 - beta_minus_1));
 				}
 				else {
-					static_assert(std::is_same_v<format, ieee754_binary64>);
+					static_assert(std::is_same<format, ieee754_binary64>::value);
 					return (cache.high() + (cache.high() >> (significand_bits + 1))) >>
 						(carrier_bits - significand_bits - 1 - beta_minus_1);
 				}
@@ -3101,11 +3101,11 @@ namespace jkj::dragonbox {
 			static carrier_uint compute_round_up_for_shorter_interval_case(
 				cache_entry_type const& cache, int beta_minus_1) noexcept
 			{
-				if constexpr (std::is_same_v<format, ieee754_binary32>) {
+				if constexpr (std::is_same<format, ieee754_binary32>::value) {
 					return (carrier_uint(cache >> (cache_bits - significand_bits - 2 - beta_minus_1)) + 1) / 2;
 				}
 				else {
-					static_assert(std::is_same_v<format, ieee754_binary64>);
+					static_assert(std::is_same<format, ieee754_binary64>::value);
 					return ((cache.high() >> (carrier_bits - significand_bits - 2 - beta_minus_1)) + 1) / 2;
 				}
 			}
@@ -3207,7 +3207,7 @@ namespace jkj::dragonbox {
 				}
 				template <class FoundPolicyInfo, class FirstPolicy, class... RemainingPolicies>
 				static constexpr auto get_policy_impl(FoundPolicyInfo, FirstPolicy, RemainingPolicies... remainings) {
-					if constexpr (std::is_base_of_v<Base, FirstPolicy>) {
+					if constexpr (std::is_base_of<Base, FirstPolicy>::value) {
 						if constexpr (FoundPolicyInfo::found_info == policy_found_info::not_found) {
 							return get_policy_impl(
 								found_policy_pair<FirstPolicy, policy_found_info::unique>{},
@@ -3245,7 +3245,7 @@ namespace jkj::dragonbox {
 			constexpr bool check_policy_validity(Policy,
 				base_default_pair_list<FirstBaseDefaultPair, RemainingBaseDefaultPairs...>)
 			{
-				return std::is_base_of_v<typename FirstBaseDefaultPair::base, Policy> ||
+				return std::is_base_of<typename FirstBaseDefaultPair::base, Policy>::value ||
 					check_policy_validity(Policy{}, base_default_pair_list< RemainingBaseDefaultPairs...>{});
 			}
 

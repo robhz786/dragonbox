@@ -174,12 +174,12 @@ namespace jkj {
 		// Check if a number is a multiple of 2^exp
 		template <class UInt>
 		inline bool divisible_by_power_of_2(UInt x, int exp) noexcept {
-			static_assert(std::is_same_v<UInt, std::uint32_t> || std::is_same_v<UInt, std::uint64_t>);
+			static_assert(std::is_same<UInt, std::uint32_t>::value || std::is_same<UInt, std::uint64_t>::value);
 			assert(exp >= 1);
 			assert(x != 0);
 #if (defined(__GNUC__) || defined(__clang__)) && defined(__x86_64__)
 			int index;
-			if constexpr (std::is_same_v<UInt, std::uint32_t>) {
+			if constexpr (std::is_same<UInt, std::uint32_t>::value) {
 				if constexpr (sizeof(unsigned long) == 4) {
 					index = __builtin_ctzl((unsigned long)x);
 				}
@@ -197,7 +197,7 @@ namespace jkj {
 			return index >= exp;
 #elif defined(_MSC_VER) && defined(_M_X64)
 			unsigned long index;
-			if constexpr (std::is_same_v<UInt, std::uint32_t>) {
+			if constexpr (std::is_same<UInt, std::uint32_t>::value) {
 				_BitScanForward(&index, x);
 			}
 			else {
@@ -256,7 +256,7 @@ namespace jkj {
 		template <class UInt>
 		struct divisibility_test_table_holder {
 			static constexpr auto table = generate_divisibility_test_table<UInt,
-				std::is_same_v<UInt, std::uint32_t> ? 12 : 24>();
+				std::is_same<UInt, std::uint32_t>::value ? 12 : 24>();
 		};
 		template <class UInt>
 		constexpr bool divisible_by_power_of_5(UInt x, unsigned int exp) noexcept {

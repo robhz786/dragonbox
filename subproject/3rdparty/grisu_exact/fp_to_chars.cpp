@@ -67,7 +67,7 @@ namespace jkj {
 
 		template <class UInt>
 		static constexpr std::uint32_t decimal_length(UInt const v) {
-			if constexpr (std::is_same_v<UInt, std::uint32_t>) {
+			if constexpr (std::is_same<UInt, std::uint32_t>::value) {
 				// Function precondition: v is not a 10-digit number.
 				// (f2s: 9 digits are sufficient for round-tripping.)
 				// (d2fixed: We print 9-digit blocks.)
@@ -83,7 +83,7 @@ namespace jkj {
 				return 1;
 			}
 			else {
-				static_assert(std::is_same_v<UInt, std::uint64_t>);
+				static_assert(std::is_same<UInt, std::uint64_t>::value);
 				// This is slightly faster than a loop.
 				// The average output length is 16.38 digits, so we check high-to-low.
 				// Function precondition: v is not an 18, 19, or 20-digit number.

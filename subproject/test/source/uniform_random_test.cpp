@@ -33,7 +33,7 @@ static bool uniform_random_test(std::size_t number_of_tests, TypenameString&& ty
 
 		// Check if the output is identical to that of Ryu
 		jkj::dragonbox::to_chars(x, buffer1);
-		if constexpr (std::is_same_v<Float, float>) {
+		if constexpr (std::is_same<Float, float>::value) {
 			f2s_buffered(x, buffer2);
 		}
 		else {

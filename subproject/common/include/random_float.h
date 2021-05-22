@@ -161,7 +161,7 @@ Float randomly_generate_float_with_given_digits(unsigned int digits, RandGen& rg
 		auto str = std::to_string(sign * significand) + 'e' + std::to_string(exp);
 
 		try {
-			if constexpr (std::is_same_v<Float, float>) {
+			if constexpr (std::is_same<Float, float>::value) {
 				result = std::stof(str);
 			}
 			else {

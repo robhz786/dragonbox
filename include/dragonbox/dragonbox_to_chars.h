@@ -53,7 +53,7 @@ namespace jkj::dragonbox {
 					[] {
 						// For binary32, trailing zero removal procedure is very fast,
 						// so it's better to do it in to_decimal rather than in to_chars.
-						if constexpr (std::is_same_v<typename FloatTraits::format, ieee754_binary32>) {
+						if constexpr (std::is_same<typename FloatTraits::format, ieee754_binary32>::value) {
 							return policy::trailing_zero::remove;
 						}
 						// For binary64, the additional cost is too big,
@@ -102,7 +102,7 @@ namespace jkj::dragonbox {
 	// Maximum required buffer size
 	template <class FloatFormat>
 	inline constexpr std::size_t max_output_string_length =
-		std::is_same_v<FloatFormat, ieee754_binary32> ?
+		std::is_same<FloatFormat, ieee754_binary32>::value ?
 		// sign(1) + significand(9) + decimal_point(1) + exp_marker(1) + exp_sign(1) + exp(2)
 		(1 + 9 + 1 + 1 + 1 + 2) :
 		// format == ieee754_format::binary64

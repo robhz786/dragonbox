@@ -41,7 +41,7 @@ static bool test_all_shorter_interval_cases_impl()
 		auto x = jkj::dragonbox::float_bits<Float>{ br }.to_float();
 
 		jkj::dragonbox::to_chars(x, buffer1);
-		if constexpr (std::is_same_v<Float, float>) {
+		if constexpr (std::is_same<Float, float>::value) {
 			f2s_buffered(x, buffer2);
 		}
 		else {

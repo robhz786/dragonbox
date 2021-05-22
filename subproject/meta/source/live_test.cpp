@@ -32,7 +32,7 @@ static void live_test()
 		while (true) {
 			std::getline(std::cin, x_str);
 			try {
-				if constexpr (std::is_same_v<Float, float>) {
+				if constexpr (std::is_same<Float, float>::value) {
 					x = std::stof(x_str);
 				}
 				else {
@@ -52,7 +52,7 @@ static void live_test()
 			<< xx.extract_exponent_bits() << std::dec
 			<< " (value: " << xx.binary_exponent() << ")\n";
 		std::cout << "  significand bits: " << "0x" << std::hex << std::setfill('0');
-		if constexpr (std::is_same_v<Float, float>) {
+		if constexpr (std::is_same<Float, float>::value) {
 			std::cout << std::setw(8);
 		}
 		else {
