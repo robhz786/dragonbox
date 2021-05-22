@@ -64,22 +64,27 @@ public:
 	{
 		assert(number_of_iterations >= 1);
 		char buffer[40];
+		using mapped_type = typename output_type::mapped_type;
 
 		for (auto const& name_func_pair : name_func_pairs_) {
-			auto [result_array_itr, is_inserted] = out.insert_or_assign(
-				name_func_pair.first,
-				std::array<std::vector<std::pair<Float, double>>, max_digits + 1>{});
-
+			const auto& func_name = name_func_pair.first;
+			auto result_array_itr = out.find(func_name);
+			if (result_array_itr == out.end()) {
+				using pair_type = typename output_type::value_type;
+				result_array_itr = out.insert(pair_type{func_name, mapped_type{}}).first;
+			} else {
+				result_array_itr->second = mapped_type{};
+			}
 			for (unsigned int digits = 0; digits <= max_digits; ++digits) {
 				(*result_array_itr).second[digits].resize(samples_[digits].size());
 				auto out_itr = (*result_array_itr).second[digits].begin();
 
 				if (digits == 0) {
-					std::cout << "Benchmarking " << name_func_pair.first <<
+					std::cout << "Benchmarking " << func_name <<
 						" with uniformly random " << float_name << "'s...\n";
 				}
 				else {
-					std::cout << "Benchmarking " << name_func_pair.first <<
+					std::cout << "Benchmarking " << func_name <<
 						" with (approximately) uniformly random " << float_name <<
 						"'s of " << digits << " digits...\n";
 				}
