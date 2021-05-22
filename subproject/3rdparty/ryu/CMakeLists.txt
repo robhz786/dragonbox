@@ -9,7 +9,7 @@ add_library(ryu STATIC
         ryu/digit_table.h)
 add_library(ryu::ryu ALIAS ryu)
 
-target_compile_features(ryu PUBLIC cxx_std_17)
+target_compile_features(ryu PUBLIC cxx_std_14)
 
 target_include_directories(ryu
         PUBLIC

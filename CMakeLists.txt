@@ -29,7 +29,7 @@ target_include_directories(dragonbox
         INTERFACE
         "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>")
 
-target_compile_features(dragonbox INTERFACE cxx_std_17)
+target_compile_features(dragonbox INTERFACE cxx_std_14)
 
 # ---- Declare library (dragonbox_to_chars) ----
 
@@ -49,7 +49,7 @@ target_include_directories(dragonbox_to_chars
         PUBLIC
         "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>")
 
-target_compile_features(dragonbox_to_chars PUBLIC cxx_std_17)
+target_compile_features(dragonbox_to_chars PUBLIC cxx_std_14)
 
 # ---- Install ----
 

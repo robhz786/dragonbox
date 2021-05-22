@@ -35,7 +35,7 @@ set(benchmark_sources
 
 add_executable(benchmark ${benchmark_headers} ${benchmark_sources})
 
-target_compile_features(benchmark PRIVATE cxx_std_17)
+target_compile_features(benchmark PRIVATE cxx_std_14)
 
 target_include_directories(benchmark
         PRIVATE

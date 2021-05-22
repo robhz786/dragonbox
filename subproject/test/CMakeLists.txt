@@ -41,7 +41,7 @@ function(add_test NAME)
     target_link_libraries(${NAME} PRIVATE ryu::ryu)
   endif()
 
-  target_compile_features(${NAME} PRIVATE cxx_std_17)
+  target_compile_features(${NAME} PRIVATE cxx_std_14)
 
   _add_test(NAME ${NAME} COMMAND ${NAME})
 
