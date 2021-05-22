@@ -24,7 +24,6 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
-#include <string_view>
 #include <utility>
 #include <unordered_map>
 #include <vector>
@@ -61,7 +60,7 @@ public:
 	using output_type = std::unordered_map<std::string,
 		std::array<std::vector<std::pair<Float, double>>, max_digits + 1>
 	>;
-	void run(std::size_t number_of_iterations, std::string_view float_name, output_type& out)
+	void run(std::size_t number_of_iterations, const char* float_name, output_type& out)
 	{
 		assert(number_of_iterations >= 1);
 		char buffer[40];
@@ -101,14 +100,14 @@ public:
 		}
 	}
 
-	output_type run(std::size_t number_of_iterations, std::string_view float_name)
+	output_type run(std::size_t number_of_iterations, const char* float_name)
 	{
 		output_type out;
 		run(number_of_iterations, float_name, out);
 		return out;
 	}
 
-	void register_function(std::string_view name, void(*func)(Float, char*))
+	void register_function(const char* name, void(*func)(Float, char*))
 	{
 		name_func_pairs_.emplace(name, func);
 	}
@@ -123,21 +122,21 @@ private:
 };
 
 register_function_for_benchmark::register_function_for_benchmark(
-	std::string_view name,
+	const char* name,
 	void(*func_float)(float, char*))
 {
 	benchmark_holder<float>::get_instance().register_function(name, func_float);
 };
 
 register_function_for_benchmark::register_function_for_benchmark(
-	std::string_view name,
+	const char* name,
 	void(*func_double)(double, char*))
 {
 	benchmark_holder<double>::get_instance().register_function(name, func_double);
 };
 
 register_function_for_benchmark::register_function_for_benchmark(
-	std::string_view name,
+	const char* name,
 	void(*func_float)(float, char*),
 	void(*func_double)(double, char*))
 {
@@ -161,7 +160,7 @@ void run_matlab() {
 #endif
 
 template <class Float>
-static void benchmark_test(std::string_view float_name,
+static void benchmark_test(const char* float_name,
 	std::size_t number_of_uniform_samples, std::size_t number_of_digits_samples_per_digits,
 	std::size_t number_of_iterations)
 {

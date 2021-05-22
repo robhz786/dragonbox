@@ -19,7 +19,7 @@
 #include "random_float.h"
 #include "ryu/ryu.h"
 #include <iostream>
-#include <string_view>
+#include <cstring>
 
 template <class Float, class TypenameString>
 static bool uniform_random_test(std::size_t number_of_tests, TypenameString&& type_name_string)
@@ -40,10 +40,7 @@ static bool uniform_random_test(std::size_t number_of_tests, TypenameString&& ty
 			d2s_buffered(x, buffer2);
 		}
 
-		std::string_view view1(buffer1);
-		std::string_view view2(buffer2);
-
-		if (view1 != view2) {
+		if (std::strcmp(buffer1, buffer2) != 0) {
 			std::cout << "Error detected! [Ryu = " << buffer2
 				<< ", Dragonbox = " << buffer1 << "]\n";
 			success = false;

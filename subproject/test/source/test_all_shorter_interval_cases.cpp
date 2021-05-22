@@ -20,7 +20,7 @@
 
 #include <iostream>
 #include <iomanip>
-#include <string_view>
+#include <cstring>
 
 template <class Float>
 static bool test_all_shorter_interval_cases_impl()
@@ -48,10 +48,7 @@ static bool test_all_shorter_interval_cases_impl()
 			d2s_buffered(x, buffer2);
 		}
 
-		std::string_view view1(buffer1);
-		std::string_view view2(buffer2);
-
-		if (view1 != view2) {
+		if (std::strcmp(buffer1, buffer2) != 0) {
 			std::cout << "Error detected! [Ryu = " << buffer2
 				<< ", Dragonbox = " << buffer1 << "]\n";
 			success = false;

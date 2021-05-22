@@ -18,21 +18,19 @@
 #ifndef JKJ_BENCHMARK
 #define JKJ_BENCHMARK
 
-#include <string_view>
-
 struct register_function_for_benchmark {
 	register_function_for_benchmark() = default;
 
 	register_function_for_benchmark(
-		std::string_view name,
+		const char* name,
 		void(*func)(float, char*));
 
 	register_function_for_benchmark(
-		std::string_view name,
+		const char* name,
 		void(*func)(double, char*));
 
 	register_function_for_benchmark(
-		std::string_view name,
+		const char* name,
 		void(*func_float)(float, char*),
 		void(*func_double)(double, char*));
 };

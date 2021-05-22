@@ -204,7 +204,7 @@ template <
 	std::uint64_t s_fractional_digits,
 	std::size_t shift_amount
 >
-static int verify(std::string_view name,
+static int verify(const char* name,
 	std::function<int(int)> precise_calculator = nullptr)
 {
 	// Compute the constants
