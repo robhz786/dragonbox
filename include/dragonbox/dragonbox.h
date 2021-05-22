@@ -108,7 +108,7 @@ namespace dragonbox {
 			std::uint32_t,
 			std::uint64_t
 		>;
-		static_assert(sizeof(carrier_uint) == sizeof(T));
+		static_assert(sizeof(carrier_uint) == sizeof(T), "");
 
 		// Defines a signed integer type for holding
 		// significand bits together with the sign bit.
@@ -146,7 +146,7 @@ namespace dragonbox {
 		static constexpr unsigned int extract_exponent_bits(carrier_uint u) noexcept {
 			constexpr int significand_bits = format::significand_bits;
 			constexpr int exponent_bits = format::exponent_bits;
-			static_assert(detail::value_bits<unsigned int> > exponent_bits);
+			static_assert(detail::value_bits<unsigned int> > exponent_bits, "");
 			constexpr auto exponent_bits_mask = (unsigned int)(((unsigned int)(1) << exponent_bits) - 1);
 			return (unsigned int)(u >> significand_bits) & exponent_bits_mask;
 		}
@@ -358,7 +358,7 @@ namespace dragonbox {
 		namespace bits {
 			template <class UInt>
 			inline int countr_zero(UInt n) noexcept {
-				static_assert(std::is_unsigned<UInt>::value && value_bits<UInt> <= 64);
+				static_assert(std::is_unsigned<UInt>::value && value_bits<UInt> <= 64, "");
 #if defined(__GNUC__) || defined(__clang__)
 #define JKJ_HAS_COUNTR_ZERO_INTRINSIC 1
 				if constexpr (std::is_same<UInt, unsigned long>::value) {
@@ -368,7 +368,7 @@ namespace dragonbox {
 					return __builtin_ctzll(n);
 				}
 				else {
-					static_assert(sizeof(UInt) <= sizeof(unsigned int));
+					static_assert(sizeof(UInt) <= sizeof(unsigned int), "");
 					return __builtin_ctz((unsigned int)n);
 				}
 #elif defined(_MSC_VER)
@@ -383,7 +383,7 @@ namespace dragonbox {
 #endif
 				}
 				else {
-					static_assert(sizeof(UInt) <= sizeof(unsigned int));
+					static_assert(sizeof(UInt) <= sizeof(unsigned int), "");
 					return int(_tzcnt_u32((unsigned int)n));
 				}
 #else
@@ -607,7 +607,7 @@ namespace dragonbox {
 
 		template <int k, class Int>
 		constexpr Int compute_power(Int a) noexcept {
-			static_assert(k >= 0);
+			static_assert(k >= 0, "");
 			Int p = 1;
 			for (int i = 0; i < k; ++i) {
 				p *= a;
@@ -617,7 +617,7 @@ namespace dragonbox {
 
 		template <int a, class UInt>
 		constexpr int count_factors(UInt n) noexcept {
-			static_assert(a > 1);
+			static_assert(a > 1, "");
 			int c = 0;
 			while (n % a == 0) {
 				n /= a;
@@ -848,7 +848,7 @@ namespace dragonbox {
 			constexpr bool check_divisibility_and_divide_by_pow10(std::uint32_t& n) noexcept
 			{
 				// Make sure the computation for max_n does not overflow.
-				static_assert(N + 1 <= log::floor_log10_pow2(31));
+				static_assert(N + 1 <= log::floor_log10_pow2(31), "");
 				assert(n <= compute_power<N + 1>(std::uint32_t(10)));
 
 				using info = check_divisibility_and_divide_by_pow10_info<N>;
@@ -896,10 +896,10 @@ namespace dragonbox {
 			template <int N, int max_pow2, int max_pow5, class UInt>
 			constexpr UInt divide_by_pow10(UInt n) noexcept
 			{
-				static_assert(N >= 0);
+				static_assert(N >= 0, "");
 
 				// Ensure no overflow.
-				static_assert(max_pow2 + (log::floor_log2_pow10(max_pow5) - max_pow5) < value_bits<UInt>);
+				static_assert(max_pow2 + (log::floor_log2_pow10(max_pow5) - max_pow5) < value_bits<UInt>, "");
 
 				// Specialize for 64-bit division by 1000.
 				// Ensure that the correctness condition is met.
@@ -2442,8 +2442,8 @@ namespace dragonbox {
 			using format::decimal_digits;
 
 			static constexpr int kappa = std::is_same<format, ieee754_binary32>::value ? 1 : 2;
-			static_assert(kappa >= 1);
-			static_assert(carrier_bits >= significand_bits + 2 + log::floor_log2_pow10(kappa + 1));
+			static_assert(kappa >= 1, "");
+			static_assert(carrier_bits >= significand_bits + 2 + log::floor_log2_pow10(kappa + 1), "");
 
 			static constexpr int calculate_min_k() noexcept {
 				constexpr auto a = -log::floor_log10_pow2_minus_log10_4_over_3(
@@ -2453,7 +2453,7 @@ namespace dragonbox {
 				return a < b ? a : b;
 			}
 			static constexpr int min_k = calculate_min_k();
-			static_assert(min_k >= cache_holder<format>::min_k);
+			static_assert(min_k >= cache_holder<format>::min_k, "");
 
 			static constexpr int calculate_max_k() noexcept {
 				constexpr auto a = -log::floor_log10_pow2_minus_log10_4_over_3(
@@ -2463,7 +2463,7 @@ namespace dragonbox {
 				return a > b ? a : b;
 			}
 			static constexpr int max_k = calculate_max_k();
-			static_assert(max_k <= cache_holder<format>::max_k);
+			static_assert(max_k <= cache_holder<format>::max_k, "");
 
 			using cache_entry_type =
 				typename cache_holder<format>::cache_entry_type;
@@ -2967,7 +2967,7 @@ namespace dragonbox {
 					return s;
 				}
 				else {
-					static_assert(std::is_same<format, ieee754_binary64>::value);
+					static_assert(std::is_same<format, ieee754_binary64>::value, "");
 					static_assert(max_power == 16, "Assertion failed! Did you change kappa?");
 
 					// Divide by 10^8 and reduce to 32-bits.
@@ -3077,7 +3077,7 @@ namespace dragonbox {
 					return wuint::umul96_upper32(u, cache);
 				}
 				else {
-					static_assert(std::is_same<format, ieee754_binary64>::value);
+					static_assert(std::is_same<format, ieee754_binary64>::value, "");
 					return wuint::umul192_upper64(u, cache);
 				}
 			}
@@ -3088,7 +3088,7 @@ namespace dragonbox {
 					return std::uint32_t(cache >> (cache_bits - 1 - beta_minus_1));
 				}
 				else {
-					static_assert(std::is_same<format, ieee754_binary64>::value);
+					static_assert(std::is_same<format, ieee754_binary64>::value, "");
 					return std::uint32_t(cache.high() >> (carrier_bits - 1 - beta_minus_1));
 				}
 			}
@@ -3104,7 +3104,7 @@ namespace dragonbox {
 						(64 - beta_minus_1)) & 1) != 0;
 				}
 				else {
-					static_assert(std::is_same<format, ieee754_binary64>::value);
+					static_assert(std::is_same<format, ieee754_binary64>::value, "");
 					return ((wuint::umul192_middle64(two_f, cache) >>
 						(64 - beta_minus_1)) & 1) != 0;
 				}
@@ -3119,7 +3119,7 @@ namespace dragonbox {
 						(cache_bits - significand_bits - 1 - beta_minus_1));
 				}
 				else {
-					static_assert(std::is_same<format, ieee754_binary64>::value);
+					static_assert(std::is_same<format, ieee754_binary64>::value, "");
 					return (cache.high() - (cache.high() >> (significand_bits + 2))) >>
 						(carrier_bits - significand_bits - 1 - beta_minus_1);
 				}
@@ -3134,7 +3134,7 @@ namespace dragonbox {
 						(cache_bits - significand_bits - 1 - beta_minus_1));
 				}
 				else {
-					static_assert(std::is_same<format, ieee754_binary64>::value);
+					static_assert(std::is_same<format, ieee754_binary64>::value, "");
 					return (cache.high() + (cache.high() >> (significand_bits + 1))) >>
 						(carrier_bits - significand_bits - 1 - beta_minus_1);
 				}
@@ -3147,7 +3147,7 @@ namespace dragonbox {
 					return (carrier_uint(cache >> (cache_bits - significand_bits - 2 - beta_minus_1)) + 1) / 2;
 				}
 				else {
-					static_assert(std::is_same<format, ieee754_binary64>::value);
+					static_assert(std::is_same<format, ieee754_binary64>::value, "");
 					return ((cache.high() >> (carrier_bits - significand_bits - 2 - beta_minus_1)) + 1) / 2;
 				}
 			}
@@ -3415,7 +3415,7 @@ namespace dragonbox {
 						>(br, exponent_bits);
 				}
 				else {
-					static_assert(tag == decimal_to_binary_rounding::tag_t::right_closed_directed);
+					static_assert(tag == decimal_to_binary_rounding::tag_t::right_closed_directed, "");
 					return detail::impl<Float>::template
 						compute_right_closed_directed<return_type,
 							typename policy_holder::trailing_zero_policy,

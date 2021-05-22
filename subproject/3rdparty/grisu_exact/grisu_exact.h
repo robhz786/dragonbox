@@ -174,7 +174,7 @@ namespace jkj {
 		// Check if a number is a multiple of 2^exp
 		template <class UInt>
 		inline bool divisible_by_power_of_2(UInt x, int exp) noexcept {
-			static_assert(std::is_same<UInt, std::uint32_t>::value || std::is_same<UInt, std::uint64_t>::value);
+			static_assert(std::is_same<UInt, std::uint32_t>::value || std::is_same<UInt, std::uint64_t>::value, "");
 			assert(exp >= 1);
 			assert(x != 0);
 #if (defined(__GNUC__) || defined(__clang__)) && defined(__x86_64__)
@@ -342,7 +342,7 @@ namespace jkj {
 				std::uint32_t,
 				std::uint64_t>;
 
-			static_assert(sizeof(extended_significand_type) == sizeof(Float));
+			static_assert(sizeof(extended_significand_type) == sizeof(Float), "");
 
 			static constexpr std::size_t extended_precision =
 				sizeof(extended_significand_type) * std::numeric_limits<unsigned char>::digits;
@@ -364,29 +364,29 @@ namespace jkj {
 				std::numeric_limits<Float>::min_exponent - int(extended_precision);
 			static constexpr int max_exponent =
 				std::numeric_limits<Float>::max_exponent - int(extended_precision);
-			static_assert(min_exponent < 0 && max_exponent > 0 && -min_exponent >= max_exponent);
-			static_assert(min_exponent == 1 + exponent_bias - int(extended_precision) + 1);
+			static_assert(min_exponent < 0 && max_exponent > 0 && -min_exponent >= max_exponent, "");
+			static_assert(min_exponent == 1 + exponent_bias - int(extended_precision) + 1, "");
 
 			static constexpr int alpha = sizeof(Float) == 4 ? -5 : -5;
 			static constexpr int gamma = alpha + 3;
-			static_assert(alpha >= -(int(extended_precision - precision) - 4) && gamma <= 0);
+			static_assert(alpha >= -(int(extended_precision - precision) - 4) && gamma <= 0, "");
 
 			static constexpr int min_kappa =
 				-floor_log10_pow2(-(int(extended_precision - precision) - 3 + alpha)) - 1;
 			static constexpr int max_kappa =
 				-floor_log10_pow2(-(int(extended_precision) + gamma)) - 1;
-			static_assert(0 <= min_kappa && min_kappa <= max_kappa);
+			static_assert(0 <= min_kappa && min_kappa <= max_kappa, "");
 
 			static constexpr int initial_kappa = sizeof(Float) == 4 ? 2 : 3;
-			static_assert(min_kappa <= initial_kappa && initial_kappa <= max_kappa);
+			static_assert(min_kappa <= initial_kappa && initial_kappa <= max_kappa, "");
 
 			// Ensure delta cannot overflow
 			// delta is upper bounded by 2^(q-p-1+gamma), and
 			// during the decreasing search, it would get multiplied by 10^(initial_kappa-min_kappa-1)
 			static_assert(floor_log2_pow10(initial_kappa - min_kappa - 1) <
-				32 - int(extended_precision - precision - 1) - gamma);
+				32 - int(extended_precision - precision - 1) - gamma, "");
 			// Ensure 10^initial_kappa fits inside 32 bits
-			static_assert(initial_kappa < floor_log10_pow2(32));
+			static_assert(initial_kappa < floor_log10_pow2(32), "");
 
 			static constexpr int min_k = -floor_log10_pow2(max_exponent + 1 - alpha);
 			static constexpr int max_k = -floor_log10_pow2(min_exponent + 1 - alpha);
@@ -418,7 +418,7 @@ namespace jkj {
 				(alpha - 2) - floor_log2_pow10(-floor_log5_pow2(precision + 1) - 1);
 
 			// Ensure that fractional parts cannot vanish when exponent is the minimum
-			static_assert(min_exponent < integer_check_exponent_lower_bound_for_q_mp_m3);
+			static_assert(min_exponent < integer_check_exponent_lower_bound_for_q_mp_m3, "");
 			
 			static constexpr int zero_fractional_part_min_exponent_normal =
 				floor_log5_pow2(-(int(extended_precision - precision) - 2 + alpha)) -
@@ -1876,7 +1876,7 @@ namespace jkj {
 				// the search will be performed only once. Hence, we do not need to do that.
 				{
 					// This procedure strictly depends on our specific choice of these parameters:
-					static_assert(initial_kappa - min_kappa <= 2);
+					static_assert(initial_kappa - min_kappa <= 2, "");
 
 					constexpr unsigned int lambda = 1;
 					// We already know r < 10^initial_kappa < 2^32
@@ -1909,7 +1909,7 @@ namespace jkj {
 						r = 0;
 					}
 					else {
-						static_assert(initial_kappa == 3);
+						static_assert(initial_kappa == 3, "");
 						// kappa = 1
 						ret_value.significand *= 100;
 						ret_value.significand += 10 * quotient + (std::uint32_t(new_r) / 10);
@@ -1958,7 +1958,7 @@ namespace jkj {
 
 				if constexpr (sizeof(Float) == 4) {
 					// This procedure strictly depends on our specific choice of these parameters:
-					static_assert(max_kappa - initial_kappa < 8);
+					static_assert(max_kappa - initial_kappa < 8, "");
 
 					increasing_search<4, IntervalTypeProvider::tag, true>(ret_value, interval_type,
 						zf_vs_deltaf, exponent, minus_k, minus_beta, significand, r, divisor, deltai, cache);
@@ -1969,7 +1969,7 @@ namespace jkj {
 				}
 				else {
 					// This procedure strictly depends on our specific choice of these parameters:
-					static_assert(max_kappa - initial_kappa < 16);
+					static_assert(max_kappa - initial_kappa < 16, "");
 
 					increasing_search<8, IntervalTypeProvider::tag, true>(ret_value, interval_type,
 						zf_vs_deltaf, exponent, minus_k, minus_beta, significand, r, divisor, deltai, cache);

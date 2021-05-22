@@ -26,7 +26,7 @@ namespace {
 
 	template <>
 	struct bitset_to_uint<float> {
-		static_assert(sizeof(float)* std::numeric_limits<unsigned char>::digits == 32);
+		static_assert(sizeof(float)* std::numeric_limits<unsigned char>::digits == 32, "");
 
 		static std::uint64_t convert(std::bitset<64> const& bs) noexcept
 		{
@@ -36,7 +36,7 @@ namespace {
 
 	template <>
 	struct bitset_to_uint<double> {
-		static_assert(sizeof(double)* std::numeric_limits<unsigned char>::digits == 64);
+		static_assert(sizeof(double)* std::numeric_limits<unsigned char>::digits == 64, "");
 
 		static jkj::dragonbox::detail::wuint::uint128 convert(std::bitset<128> const& bs) noexcept
 		{
@@ -59,7 +59,7 @@ namespace {
 	template <std::size_t precision, int min_k, int max_k>
 	std::array<std::bitset<precision>, std::size_t(max_k - min_k + 1)> generate_cache_bitset()
 	{
-		static_assert(max_k + min_k >= 0 && min_k <= 0 && max_k >= 0);
+		static_assert(max_k + min_k >= 0 && min_k <= 0 && max_k >= 0, "");
 		constexpr auto power_of_5_max_bits =
 			std::size_t(jkj::dragonbox::detail::log::floor_log2_pow10(max_k) - max_k + 1);
 		using bigint_type = jkj::dragonbox::detail::bigint<power_of_5_max_bits>;

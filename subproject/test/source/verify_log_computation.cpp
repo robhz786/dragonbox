@@ -225,7 +225,7 @@ static int verify(const char* name,
 	// Compute the maximum possible e
 	constexpr auto max_exponent_upper_bound =
 		std::uint32_t(std::numeric_limits<std::int32_t>::max() / c);
-	static_assert(max_exponent_upper_bound > 1);
+	static_assert(max_exponent_upper_bound > 1, "");
 
 	// Compute a conservative upper bound on bits needed for the fractional part
 	constexpr int ceil_log2_max_exponent_upper_bound = ceil_log2(max_exponent_upper_bound);

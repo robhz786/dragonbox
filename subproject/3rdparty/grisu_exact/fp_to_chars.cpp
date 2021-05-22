@@ -83,7 +83,7 @@ namespace jkj {
 				return 1;
 			}
 			else {
-				static_assert(std::is_same<UInt, std::uint64_t>::value);
+				static_assert(std::is_same<UInt, std::uint64_t>::value, "");
 				// This is slightly faster than a loop.
 				// The average output length is 16.38 digits, so we check high-to-low.
 				// Function precondition: v is not an 18, 19, or 20-digit number.
