@@ -866,7 +866,7 @@ namespace jkj::dragonbox {
 					return true;
 				};
 
-				if (!compare_and_subtract(std::bool_constant<true>{})) {
+				if (!compare_and_subtract(std::true_type{})) {
 					return quotient;
 				}
 
@@ -914,7 +914,7 @@ namespace jkj::dragonbox {
 
 					// Leading bits of n_shifted and *this are now aligned
 					n_shifted.leading_one_pos = leading_one_pos;
-				} while (compare_and_subtract(std::bool_constant<false>{}));
+				} while (compare_and_subtract(std::false_type{}));
 
 				return quotient;
 			}
