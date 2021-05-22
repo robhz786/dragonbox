@@ -197,6 +197,16 @@ static int floor_log5_pow2_minus_log5_3_precise(int e)
 	}
 }
 
+constexpr int ceil_log2(std::int32_t max_exponent_upper_bound) noexcept {
+	int c = 0;
+	std::uint32_t u = 1;
+	while (u < max_exponent_upper_bound) {
+		u <<= 1;
+		++c;
+	}
+	return c;
+}
+
 template <
 	std::int32_t c_integer_part,
 	std::uint64_t c_fractional_digits,
@@ -218,15 +228,7 @@ static int verify(const char* name,
 	static_assert(max_exponent_upper_bound > 1);
 
 	// Compute a conservative upper bound on bits needed for the fractional part
-	constexpr int ceil_log2_max_exponent_upper_bound = [] {
-		int c = 0;
-		std::uint32_t u = 1;
-		while (u < max_exponent_upper_bound) {
-			u <<= 1;
-			++c;
-		}
-		return c;
-	}();
+	constexpr int ceil_log2_max_exponent_upper_bound = ceil_log2(max_exponent_upper_bound);
 
 	// Compute the bits for the fractional part
 	constexpr auto frac_bits = std::uint32_t(

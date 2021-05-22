@@ -768,7 +768,7 @@ namespace jkj::dragonbox {
 
 			template <class UInt, UInt a, std::size_t N>
 			struct table_holder {
-				static constexpr table_t<UInt, a, N> table = [] {
+				static constexpr table_t<UInt, a, N> evaluate_table() noexcept {
 					constexpr auto mod_inverse = modular_inverse<UInt, a>();
 					table_t<UInt, a, N> table{};
 					std::common_type_t<UInt, unsigned int> pow_of_mod_inverse = 1;
@@ -782,7 +782,8 @@ namespace jkj::dragonbox {
 					}
 
 					return table;
-				}();
+				}
+				static constexpr table_t<UInt, a, N> table = evaluate_table();
 			};
 
 			template <std::size_t table_size, class UInt>
@@ -1678,7 +1679,7 @@ namespace jkj::dragonbox {
 		};
 
 		// Compressed cache for double
-		struct compressed_cache_detail {
+		struct compressed_cache_detail_base {
 			static constexpr int compression_ratio = 27;
 			static constexpr std::size_t compressed_table_size =
 				(cache_holder<ieee754_binary64>::max_k -
@@ -1687,18 +1688,18 @@ namespace jkj::dragonbox {
 			struct cache_holder_t {
 				wuint::uint128 table[compressed_table_size];
 			};
-			static constexpr cache_holder_t cache = [] {
+			static constexpr cache_holder_t evaluate_cache() noexcept {
 				cache_holder_t res{};
 				for (std::size_t i = 0; i < compressed_table_size; ++i) {
 					res.table[i] = cache_holder<ieee754_binary64>::cache[i * compression_ratio];
 				}
 				return res;
-			}();
+			};
 
 			struct pow5_holder_t {
 				std::uint64_t table[compression_ratio];
 			};
-			static constexpr pow5_holder_t pow5 = [] {
+			static constexpr pow5_holder_t evaluate_pow5_table() {
 				pow5_holder_t res{};
 				std::uint64_t p = 1;
 				for (std::size_t i = 0; i < compression_ratio; ++i) {
@@ -1706,8 +1707,28 @@ namespace jkj::dragonbox {
 					p *= 5;
 				}
 				return res;
-			}();
+			}
+		};
 
+		template <typename UInt, int kappa>
+		constexpr static int calculate_max_power_of_10() noexcept {
+			constexpr auto max_possible_significand =
+				std::numeric_limits<UInt>::max() /
+				compute_power<kappa + 1>(std::uint32_t(10));
+
+			int k = 0;
+			UInt p = 1;
+			while (p < max_possible_significand / 10) {
+				p *= 10;
+				++k;
+			}
+			return k;
+		}
+
+		// Compressed cache for double
+		struct compressed_cache_detail : compressed_cache_detail_base {
+			static constexpr cache_holder_t cache = evaluate_cache();
+			static constexpr pow5_holder_t pow5 = evaluate_pow5_table();
 			static constexpr std::uint32_t errors[] = {
 				0x50001400, 0x54044100, 0x54014555, 0x55954415, 0x54115555,
 				0x00000001, 0x50000000, 0x00104000, 0x54010004, 0x05004001,
@@ -2391,22 +2412,24 @@ namespace jkj::dragonbox {
 			static_assert(kappa >= 1);
 			static_assert(carrier_bits >= significand_bits + 2 + log::floor_log2_pow10(kappa + 1));
 
-			static constexpr int min_k = [] {
+			static constexpr int calculate_min_k() noexcept {
 				constexpr auto a = -log::floor_log10_pow2_minus_log10_4_over_3(
 					int(max_exponent - significand_bits));
 				constexpr auto b = -log::floor_log10_pow2(
 					int(max_exponent - significand_bits)) + kappa;
 				return a < b ? a : b;
-			}();
+			}
+			static constexpr int min_k = calculate_min_k();
 			static_assert(min_k >= cache_holder<format>::min_k);
 
-			static constexpr int max_k = [] {
+			static constexpr int calculate_max_k() noexcept {
 				constexpr auto a = -log::floor_log10_pow2_minus_log10_4_over_3(
 					int(min_exponent - significand_bits + 1));
 				constexpr auto b = -log::floor_log10_pow2(
 					int(min_exponent - significand_bits)) + kappa;
 				return a > b ? a : b;
-			}();
+			}
+			static constexpr int max_k = calculate_max_k();
 			static_assert(max_k <= cache_holder<format>::max_k);
 
 			using cache_entry_type =
@@ -2870,19 +2893,7 @@ namespace jkj::dragonbox {
 
 			// Remove trailing zeros from n and return the number of zeros removed.
 			JKJ_FORCEINLINE static int remove_trailing_zeros(carrier_uint& n) noexcept {
-				constexpr auto max_power = [] {
-					constexpr auto max_possible_significand =
-						std::numeric_limits<carrier_uint>::max() /
-						compute_power<kappa + 1>(std::uint32_t(10));
-
-					int k = 0;
-					carrier_uint p = 1;
-					while (p < max_possible_significand / 10) {
-						p *= 10;
-						++k;
-					}
-					return k;
-				}();
+				constexpr auto max_power = calculate_max_power_of_10<carrier_uint, kappa>();
 
 				if constexpr (std::is_same<format, ieee754_binary32>::value) {
 					static_assert(max_power == 7, "Assertion failed! Did you change kappa?");

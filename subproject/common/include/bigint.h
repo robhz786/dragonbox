@@ -18,6 +18,12 @@
 #ifndef JKJ_DRAGONBOX_BIGINT
 #define JKJ_DRAGONBOX_BIGINT
 
+#if (__cpp_constexpr >= 201603) // constexpr lambda supported
+#define JKJ_CONSTEXPR_IN_CXX17 constexpr
+#else
+#define JKJ_CONSTEXPR_IN_CXX17
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////////////
 // This file is only used for cache generation, and need not be included for real use
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -29,24 +35,24 @@
 
 namespace jkj::dragonbox {
 	namespace detail {
+		constexpr void inspect(std::uint64_t& x, std::size_t& ret, int shft) noexcept {
+			if ((x >> shft) != 0) {
+				x >>= shft;
+				ret += shft;
+			}
+		}
 		constexpr std::size_t log2p1(std::uint64_t x) noexcept {
 			// C++20 std::log2p1 is not yet supported
 			//return std::log2p1(x);
 
 			std::size_t ret = 0;
-			auto inspect = [&x, &ret](int shft) {
-				if ((x >> shft) != 0) {
-					x >>= shft;
-					ret += shft;
-				}
-			};
 
-			inspect(32);
-			inspect(16);
-			inspect(8);
-			inspect(4);
-			inspect(2);
-			inspect(1);
+			inspect(x, ret, 32);
+			inspect(x, ret, 16);
+			inspect(x, ret, 8);
+			inspect(x, ret, 4);
+			inspect(x, ret, 2);
+			inspect(x, ret, 1);
 
 			return ret + x;
 		}
@@ -410,7 +416,7 @@ namespace jkj::dragonbox {
 			}
 
 			// Add another number
-			constexpr bigint_impl& operator+=(bigint_impl const& n) & {
+			JKJ_CONSTEXPR_IN_CXX17 bigint_impl& operator+=(bigint_impl const& n) & {
 				// This auxiliary variable is necessary to avoid the problem of a += a
 				auto n_element = n.elements[0];
 
@@ -489,8 +495,12 @@ namespace jkj::dragonbox {
 				return *this;
 			}
 
-			template <class T>
-			constexpr bigint_impl operator+(T const& n) const {
+
+			JKJ_CONSTEXPR_IN_CXX17 bigint_impl operator+(bigint_impl const& n) const {
+				auto r = *this;
+				return r += n;
+			}
+			constexpr bigint_impl operator+(element_type const& n) const {
 				auto r = *this;
 				return r += n;
 			}
