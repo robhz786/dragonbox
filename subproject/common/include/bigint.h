@@ -25,6 +25,7 @@
 #include "dragonbox/dragonbox.h"
 #include <algorithm>
 #include <cassert>
+#include <iterator>
 
 namespace jkj::dragonbox {
 	namespace detail {
