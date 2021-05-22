@@ -101,7 +101,7 @@ namespace jkj::dragonbox {
 
 	// Maximum required buffer size
 	template <class FloatFormat>
-	inline constexpr std::size_t max_output_string_length =
+	constexpr std::size_t max_output_string_length =
 		std::is_same<FloatFormat, ieee754_binary32>::value ?
 		// sign(1) + significand(9) + decimal_point(1) + exp_marker(1) + exp_sign(1) + exp(2)
 		(1 + 9 + 1 + 1 + 1 + 2) :

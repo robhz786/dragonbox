@@ -661,21 +661,21 @@ namespace jkj::dragonbox {
 				return int((std::int32_t(e) * c - s) >> shift_amount);
 			}
 
-			inline constexpr std::uint64_t log10_2_fractional_digits{ 0x4d10'4d42'7de7'fbcc };
-			inline constexpr std::uint64_t log10_4_over_3_fractional_digits{ 0x1ffb'fc2b'bc78'0375 };
-			inline constexpr std::size_t floor_log10_pow2_shift_amount = 22;
-			inline constexpr int floor_log10_pow2_input_limit = 1700;
-			inline constexpr int floor_log10_pow2_minus_log10_4_over_3_input_limit = 1700;
+			constexpr std::uint64_t log10_2_fractional_digits{ 0x4d10'4d42'7de7'fbcc };
+			constexpr std::uint64_t log10_4_over_3_fractional_digits{ 0x1ffb'fc2b'bc78'0375 };
+			constexpr std::size_t floor_log10_pow2_shift_amount = 22;
+			constexpr int floor_log10_pow2_input_limit = 1700;
+			constexpr int floor_log10_pow2_minus_log10_4_over_3_input_limit = 1700;
 
-			inline constexpr std::uint64_t log2_10_fractional_digits{ 0x5269'e12f'346e'2bf9 };
-			inline constexpr std::size_t floor_log2_pow10_shift_amount = 19;
-			inline constexpr int floor_log2_pow10_input_limit = 1233;
+			constexpr std::uint64_t log2_10_fractional_digits{ 0x5269'e12f'346e'2bf9 };
+			constexpr std::size_t floor_log2_pow10_shift_amount = 19;
+			constexpr int floor_log2_pow10_input_limit = 1233;
 
-			inline constexpr std::uint64_t log5_2_fractional_digits{ 0x6e40'd1a4'143d'cb94 };
-			inline constexpr std::uint64_t log5_3_fractional_digits{ 0xaebf'4791'5d44'3b24 };
-			inline constexpr std::size_t floor_log5_pow2_shift_amount = 20;
-			inline constexpr int floor_log5_pow2_input_limit = 1492;
-			inline constexpr int floor_log5_pow2_minus_log5_3_input_limit = 2427;
+			constexpr std::uint64_t log5_2_fractional_digits{ 0x6e40'd1a4'143d'cb94 };
+			constexpr std::uint64_t log5_3_fractional_digits{ 0xaebf'4791'5d44'3b24 };
+			constexpr std::size_t floor_log5_pow2_shift_amount = 20;
+			constexpr int floor_log5_pow2_input_limit = 1492;
+			constexpr int floor_log5_pow2_minus_log5_3_input_limit = 2427;
 
 			// For constexpr computation.
 			// Returns -1 when n = 0.
@@ -2358,65 +2358,65 @@ namespace jkj::dragonbox {
 	
 	namespace policy {
 		namespace sign {
-			inline constexpr auto ignore = detail::policy_impl::sign::ignore{};
-			inline constexpr auto return_sign = detail::policy_impl::sign::return_sign{};
+			constexpr auto ignore = detail::policy_impl::sign::ignore{};
+			constexpr auto return_sign = detail::policy_impl::sign::return_sign{};
 		}
 
 		namespace trailing_zero {
-			inline constexpr auto ignore = detail::policy_impl::trailing_zero::ignore{};
-			inline constexpr auto remove = detail::policy_impl::trailing_zero::remove{};
-			inline constexpr auto report = detail::policy_impl::trailing_zero::report{};
+			constexpr auto ignore = detail::policy_impl::trailing_zero::ignore{};
+			constexpr auto remove = detail::policy_impl::trailing_zero::remove{};
+			constexpr auto report = detail::policy_impl::trailing_zero::report{};
 		}
 
 		namespace decimal_to_binary_rounding {
-			inline constexpr auto nearest_to_even =
+			constexpr auto nearest_to_even =
 				detail::policy_impl::decimal_to_binary_rounding::nearest_to_even{};
-			inline constexpr auto nearest_to_odd =
+			constexpr auto nearest_to_odd =
 				detail::policy_impl::decimal_to_binary_rounding::nearest_to_odd{};
-			inline constexpr auto nearest_toward_plus_infinity =
+			constexpr auto nearest_toward_plus_infinity =
 				detail::policy_impl::decimal_to_binary_rounding::nearest_toward_plus_infinity{};
-			inline constexpr auto nearest_toward_minus_infinity =
+			constexpr auto nearest_toward_minus_infinity =
 				detail::policy_impl::decimal_to_binary_rounding::nearest_toward_minus_infinity{};
-			inline constexpr auto nearest_toward_zero =
+			constexpr auto nearest_toward_zero =
 				detail::policy_impl::decimal_to_binary_rounding::nearest_toward_zero{};
-			inline constexpr auto nearest_away_from_zero =
+			constexpr auto nearest_away_from_zero =
 				detail::policy_impl::decimal_to_binary_rounding::nearest_away_from_zero{};
 
-			inline constexpr auto nearest_to_even_static_boundary =
+			constexpr auto nearest_to_even_static_boundary =
 				detail::policy_impl::decimal_to_binary_rounding::nearest_to_even_static_boundary{};
-			inline constexpr auto nearest_to_odd_static_boundary =
+			constexpr auto nearest_to_odd_static_boundary =
 				detail::policy_impl::decimal_to_binary_rounding::nearest_to_odd_static_boundary{};
-			inline constexpr auto nearest_toward_plus_infinity_static_boundary =
+			constexpr auto nearest_toward_plus_infinity_static_boundary =
 				detail::policy_impl::decimal_to_binary_rounding::nearest_toward_plus_infinity_static_boundary{};
-			inline constexpr auto nearest_toward_minus_infinity_static_boundary =
+			constexpr auto nearest_toward_minus_infinity_static_boundary =
 				detail::policy_impl::decimal_to_binary_rounding::nearest_toward_minus_infinity_static_boundary{};
 
-			inline constexpr auto toward_plus_infinity =
+			constexpr auto toward_plus_infinity =
 				detail::policy_impl::decimal_to_binary_rounding::toward_plus_infinity{};
-			inline constexpr auto toward_minus_infinity =
+			constexpr auto toward_minus_infinity =
 				detail::policy_impl::decimal_to_binary_rounding::toward_minus_infinity{};
-			inline constexpr auto toward_zero =
+			constexpr auto toward_zero =
 				detail::policy_impl::decimal_to_binary_rounding::toward_zero{};
-			inline constexpr auto away_from_zero =
+			constexpr auto away_from_zero =
 				detail::policy_impl::decimal_to_binary_rounding::away_from_zero{};
 		}
 
 		namespace binary_to_decimal_rounding {
-			inline constexpr auto do_not_care =
+			constexpr auto do_not_care =
 				detail::policy_impl::binary_to_decimal_rounding::do_not_care{};
-			inline constexpr auto to_even =
+			constexpr auto to_even =
 				detail::policy_impl::binary_to_decimal_rounding::to_even{};
-			inline constexpr auto to_odd =
+			constexpr auto to_odd =
 				detail::policy_impl::binary_to_decimal_rounding::to_odd{};
-			inline constexpr auto away_from_zero =
+			constexpr auto away_from_zero =
 				detail::policy_impl::binary_to_decimal_rounding::away_from_zero{};
-			inline constexpr auto toward_zero =
+			constexpr auto toward_zero =
 				detail::policy_impl::binary_to_decimal_rounding::toward_zero{};
 		}
 
 		namespace cache {
-			inline constexpr auto full = detail::policy_impl::cache::full{};
-			inline constexpr auto compact = detail::policy_impl::cache::compact{};
+			constexpr auto full = detail::policy_impl::cache::full{};
+			constexpr auto compact = detail::policy_impl::cache::compact{};
 		}
 	}
 
