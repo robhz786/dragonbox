@@ -22,8 +22,8 @@
 
 namespace jkj {
 	namespace fp_to_chars_detail {
-		char* float_to_chars(unsigned_fp_t<float> v, char* buffer);
-		char* double_to_chars(unsigned_fp_t<double> v, char* buffer);
+		char* to_chars(unsigned_fp_t<float> v, char* buffer);
+		char* to_chars(unsigned_fp_t<double> v, char* buffer);
 	}
 
 	// Returns the next-to-end position
@@ -42,16 +42,9 @@ namespace jkj {
 				++buffer;
 			}
 			if (br.is_nonzero()) {
-				if constexpr (sizeof(Float) == 4) {
-					return fp_to_chars_detail::float_to_chars(grisu_exact<false>(x,
-						std::forward<RoundingMode>(rounding_mode),
-						std::forward<CorrectRoundingSearch>(crs)), buffer);
-				}
-				else {
-					return fp_to_chars_detail::double_to_chars(grisu_exact<false>(x,
-						std::forward<RoundingMode>(rounding_mode),
-						std::forward<CorrectRoundingSearch>(crs)), buffer);
-				}
+				return fp_to_chars_detail::to_chars(grisu_exact<false>(x,
+					std::forward<RoundingMode>(rounding_mode),
+					std::forward<CorrectRoundingSearch>(crs)), buffer);
 			}
 			else {
 				std::memcpy(buffer, "0E0", 3);

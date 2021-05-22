@@ -192,10 +192,7 @@ static void benchmark_test(const char* float_name,
 			jkj::dragonbox::to_chars(data_time_pair.first, buffer);
 			out_file << "\"" << name_result_pair.first << "\"," << buffer << "," <<
 				"0x" << std::hex << std::setfill('0');
-			if constexpr (sizeof(Float) == 4)
-				out_file << std::setw(8);
-			else
-				out_file << std::setw(16);
+			out_file << std::setw(sizeof(Float) * 2);
 			out_file << br << std::dec << "," << data_time_pair.second << "\n";
 		}
 	}
@@ -237,7 +234,7 @@ int main() {
 	constexpr std::size_t number_of_digits_benchmark_samples_per_digits_double = 100000;
 	constexpr std::size_t number_of_benchmark_iterations_double = 1000;
 
-	if constexpr (benchmark_float) {
+	if (benchmark_float) {
 		std::cout << "[Running benchmark for binary32...]\n";
 		benchmark_test<float>("binary32",
 			number_of_uniform_benchmark_samples_float,
@@ -245,7 +242,7 @@ int main() {
 			number_of_benchmark_iterations_float);
 		std::cout << "Done.\n\n\n";
 	}
-	if constexpr (benchmark_double) {
+	if (benchmark_double) {
 		std::cout << "[Running benchmark for binary64...]\n";
 		benchmark_test<double>("binary64",
 			number_of_uniform_benchmark_samples_double,

@@ -78,6 +78,17 @@ static bool verify_fast_multiplication_xz()
 	return success;
 }
 
+template <typename CacheEntry>
+constexpr auto extract_lower_half(const CacheEntry& entry) noexcept -> decltype(entry.low())
+{
+    return entry.low();
+}
+
+constexpr std::uint32_t extract_lower_half(std::uint64_t entry) noexcept
+{
+    return static_cast<std::uint32_t>(entry);
+}
+
 template <class Float>
 static bool verify_fast_multiplication_yru()
 {
@@ -88,16 +99,7 @@ static bool verify_fast_multiplication_yru()
 		auto const cache = jkj::dragonbox::policy::cache::full.get_cache<typename impl::format>(k);
 
 		// Since p + beta <= q, suffices to check that the lower half of the cache is not 0
-		auto const lower_half = [cache] {
-			if constexpr (std::is_same<typename impl::format, jkj::dragonbox::ieee754_binary32>::value)
-			{
-				return std::uint32_t(cache);
-			}
-			else
-			{
-				return cache.low();
-			}
-		}();
+		auto const lower_half = extract_lower_half(cache);
 
 		if (lower_half == 0) {
 			std::cout << "(k = " << k << ") computation might be incorrect\n";

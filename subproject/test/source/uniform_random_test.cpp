@@ -21,6 +21,14 @@
 #include <iostream>
 #include <cstring>
 
+
+inline void ryu_to_chars(float x, char* dest) {
+	f2s_buffered(x, dest);
+}
+inline void ryu_to_chars(double x, char* dest) {
+	d2s_buffered(x, dest);
+}
+
 template <class Float, class TypenameString>
 static bool uniform_random_test(std::size_t number_of_tests, TypenameString&& type_name_string)
 {
@@ -33,12 +41,7 @@ static bool uniform_random_test(std::size_t number_of_tests, TypenameString&& ty
 
 		// Check if the output is identical to that of Ryu
 		jkj::dragonbox::to_chars(x, buffer1);
-		if constexpr (std::is_same<Float, float>::value) {
-			f2s_buffered(x, buffer2);
-		}
-		else {
-			d2s_buffered(x, buffer2);
-		}
+		ryu_to_chars(x, buffer2);
 
 		if (std::strcmp(buffer1, buffer2) != 0) {
 			std::cout << "Error detected! [Ryu = " << buffer2
@@ -65,12 +68,12 @@ int main()
 
 	bool success = true;
 
-	if constexpr (run_float) {
+	if (run_float) {
 		std::cout << "[Testing uniformly randomly generated float inputs...]\n";
 		success &= uniform_random_test<float>(number_of_uniform_random_tests_float, "float");
 		std::cout << "Done.\n\n\n";
 	}
-	if constexpr (run_double) {
+	if (run_double) {
 		std::cout << "[Testing uniformly randomly generated double inputs...]\n";
 		success &= uniform_random_test<double>(number_of_uniform_random_tests_double, "double");
 		std::cout << "Done.\n\n\n";

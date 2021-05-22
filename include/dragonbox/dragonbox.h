@@ -39,6 +39,17 @@
 #define JKJ_FORCEINLINE inline
 #endif
 
+#if defined(__cpp_if_constexpr)
+#	define JKJ_IF_CONSTEXPR if constexpr
+#else
+#	define JKJ_IF_CONSTEXPR if
+#	if defined(_MSC_VER)
+#		pragma warning( push )
+#		pragma warning( disable : 4127 )
+#		define JKJ_MSC_WARNING_4127_DISABLED
+#	endif
+#endif
+
 #if defined(_MSC_VER)
 #include <intrin.h>
 #endif
@@ -361,19 +372,23 @@ namespace dragonbox {
 				static_assert(std::is_unsigned<UInt>::value && value_bits<UInt> <= 64, "");
 #if defined(__GNUC__) || defined(__clang__)
 #define JKJ_HAS_COUNTR_ZERO_INTRINSIC 1
-				if constexpr (std::is_same<UInt, unsigned long>::value) {
+				static_assert( std::is_same<UInt, unsigned long>::value
+					|| std::is_same<UInt, unsigned long long>::value
+					|| sizeof(UInt) <= sizeof(unsigned int), "" );
+				JKJ_IF_CONSTEXPR (std::is_same<UInt, unsigned long>::value) {
 					return __builtin_ctzl(n);
 				}
-				else if constexpr (std::is_same<UInt, unsigned long long>::value) {
+				else JKJ_IF_CONSTEXPR (std::is_same<UInt, unsigned long long>::value) {
 					return __builtin_ctzll(n);
 				}
 				else {
-					static_assert(sizeof(UInt) <= sizeof(unsigned int), "");
 					return __builtin_ctz((unsigned int)n);
 				}
 #elif defined(_MSC_VER)
 #define JKJ_HAS_COUNTR_ZERO_INTRINSIC 1
-				if constexpr (std::is_same<UInt, unsigned __int64>::value) {
+				static_assert( std::is_same<UInt, unsigned __int64>::value
+					|| sizeof(UInt) <= sizeof(unsigned int), "" );
+				JKJ_IF_CONSTEXPR (std::is_same<UInt, unsigned __int64>::value) {
 #if defined(_M_X64)
 					return int(_tzcnt_u64(n));
 #else
@@ -383,7 +398,6 @@ namespace dragonbox {
 #endif
 				}
 				else {
-					static_assert(sizeof(UInt) <= sizeof(unsigned int), "");
 					return int(_tzcnt_u32((unsigned int)n));
 				}
 #else
@@ -391,13 +405,13 @@ namespace dragonbox {
 				int count;
 				auto n32 = std::uint32_t(n);
 
-				if constexpr (value_bits<UInt> > 32) {
+				JKJ_IF_CONSTEXPR (value_bits<UInt> > 32) {
 					if (n32 != 0) {
 						count = 31;
 					}
 					else {
 						n32 = std::uint32_t(n >> 32);
-						if constexpr (value_bits<UInt> == 64) {
+						JKJ_IF_CONSTEXPR (value_bits<UInt> == 64) {
 							if (n32 != 0) {
 								count = 63;
 							}
@@ -411,7 +425,7 @@ namespace dragonbox {
 					}
 				}
 				else {
-					if constexpr (value_bits<UInt> == 32) {
+					JKJ_IF_CONSTEXPR (value_bits<UInt> == 32) {
 						if (n32 != 0) {
 							count = 31;
 						}
@@ -425,10 +439,10 @@ namespace dragonbox {
 				}
 
 				n32 &= (0 - n32);
-				if constexpr (value_bits<UInt> > 16) {
+				JKJ_IF_CONSTEXPR (value_bits<UInt> > 16) {
 					if ((n32 & 0x0000ffff) != 0) count -= 16;
 				}
-				if constexpr (value_bits<UInt> > 8) {
+				JKJ_IF_CONSTEXPR (value_bits<UInt> > 8) {
 					if ((n32 & 0x00ff00ff) != 0) count -= 8;
 				}
 				if ((n32 & 0x0f0f0f0f) != 0) count -= 4;
@@ -891,6 +905,15 @@ namespace dragonbox {
 					>> small_division_by_pow10_info<N>::shift_amount;
 			}
 
+			template <int, typename UInt>
+			constexpr UInt divide_by_pow10_(std::true_type, UInt n) noexcept {
+				return wuint::umul128_upper64(n, 0x8312'6e97'8d4f'df3c) >> 9;
+			}
+			template <int N, typename UInt>
+			constexpr UInt divide_by_pow10_(std::false_type, UInt n) noexcept {
+				constexpr auto divisor = compute_power<N>(UInt(10));
+				return n / divisor;
+			}
 			// Compute floor(n / 10^N) for small N.
 			// Precondition: n <= 2^a * 5^b (a = max_pow2, b = max_pow5)
 			template <int N, int max_pow2, int max_pow5, class UInt>
@@ -903,15 +926,9 @@ namespace dragonbox {
 
 				// Specialize for 64-bit division by 1000.
 				// Ensure that the correctness condition is met.
-				if constexpr (std::is_same<UInt, std::uint64_t>::value && N == 3 &&
-					max_pow2 + (log::floor_log2_pow10(N + max_pow5) - (N + max_pow5)) < 70)
-				{
-					return wuint::umul128_upper64(n, 0x8312'6e97'8d4f'df3c) >> 9;
-				}
-				else {
-					constexpr auto divisor = compute_power<N>(UInt(10));
-					return n / divisor;
-				}
+				constexpr bool c = (std::is_same<UInt, std::uint64_t>::value && N == 3 &&
+					max_pow2 + (log::floor_log2_pow10(N + max_pow5) - (N + max_pow5)) < 70);
+				return divide_by_pow10_<N>(std::integral_constant<bool, c>{}, n);
 			}
 		}
 	}
@@ -2290,7 +2307,7 @@ namespace dragonbox {
 						assert(k >= cache_holder<FloatFormat>::min_k &&
 							k <= cache_holder<FloatFormat>::max_k);
 
-						if constexpr (std::is_same<FloatFormat, ieee754_binary64>::value)
+						JKJ_IF_CONSTEXPR (std::is_same<FloatFormat, ieee754_binary64>::value)
 						{
 							// Compute base index.
 							auto cache_index = (k - cache_holder<FloatFormat>::min_k) /
@@ -2428,8 +2445,265 @@ namespace dragonbox {
 
 		// Get decimal significand/decimal exponent from
 		// the bit representation of a floating-point number.
+		template <class Float, class Format, class FloatTraits>
+		struct impl_base;
+
+		template <class FloatTraits>
+		struct impl_base<float, ieee754_binary32, FloatTraits>
+		{
+			using format = ieee754_binary32;
+			using carrier_uint = typename FloatTraits::carrier_uint;
+			using cache_entry_type = typename cache_holder<format>::cache_entry_type;
+			static constexpr auto significand_bits = format::significand_bits;
+			static constexpr auto cache_bits = cache_holder<format>::cache_bits;
+			static constexpr auto carrier_bits = FloatTraits::carrier_bits;
+			static constexpr int kappa = 1;
+
+			static_assert(std::is_same<typename FloatTraits::format, format>::value, "");
+
+			static carrier_uint compute_mul(carrier_uint u, cache_entry_type const& cache) noexcept
+			{
+				return wuint::umul96_upper32(u, cache);
+			}
+
+			static std::uint32_t compute_delta(cache_entry_type const& cache, int beta_minus_1) noexcept
+			{
+				return std::uint32_t(cache >> (cache_bits - 1 - beta_minus_1));
+			}
+
+			static bool compute_mul_parity(carrier_uint two_f,
+				cache_entry_type const& cache, int beta_minus_1) noexcept
+			{
+				assert(beta_minus_1 >= 1);
+				assert(beta_minus_1 < 64);
+				return ((wuint::umul96_lower64(two_f, cache) >>
+						(64 - beta_minus_1)) & 1) != 0;
+			}
+
+			static carrier_uint compute_left_endpoint_for_shorter_interval_case(
+				cache_entry_type const& cache, int beta_minus_1) noexcept
+			{
+				return carrier_uint(
+					(cache - (cache >> (significand_bits + 2))) >>
+					(cache_bits - significand_bits - 1 - beta_minus_1));
+			}
+
+			static carrier_uint compute_right_endpoint_for_shorter_interval_case(
+				cache_entry_type const& cache, int beta_minus_1) noexcept
+			{
+				return carrier_uint(
+					(cache + (cache >> (significand_bits + 1))) >>
+					(cache_bits - significand_bits - 1 - beta_minus_1));
+			}
+
+			static carrier_uint compute_round_up_for_shorter_interval_case(
+				cache_entry_type const& cache, int beta_minus_1) noexcept
+			{
+				return (carrier_uint(cache >> (cache_bits - significand_bits - 2 - beta_minus_1)) + 1) / 2;
+			}
+
+			// Remove trailing zeros from n and return the number of zeros removed.
+			JKJ_FORCEINLINE static int remove_trailing_zeros(carrier_uint& n) noexcept {
+				constexpr auto max_power = calculate_max_power_of_10<carrier_uint, kappa>();
+
+				static_assert(max_power == 7, "Assertion failed! Did you change kappa?");
+
+				using divtable = div::division_by_5<carrier_uint>;
+
+				// Perform a binary search.
+				carrier_uint quotient;
+				int s = 0;
+
+				// Is n divisible by 10^4?
+				if ((n & 0xf) == 0) {
+					quotient = (n >> 4) * divtable::mod_inv(4);
+					if (quotient <= divtable::max_quotients(4)) {
+						n = quotient;
+						s |= 0x4;
+					}
+				}
+
+				// Is n divisible by 10^2?
+				if ((n & 0x3) == 0) {
+					quotient = (n >> 2) * divtable::mod_inv(2);
+					if (quotient <= divtable::max_quotients(2)) {
+						n = quotient;
+						s |= 0x2;
+					}
+				}
+
+				// Is n divisible by 10^1?
+				if ((n & 0x1) == 0) {
+					quotient = (n >> 1) * divtable::mod_inv(1);
+					if (quotient <= divtable::max_quotients(1)) {
+						n = quotient;
+						s |= 0x1;
+					}
+				}
+
+				return s;
+			}
+		};
+
+		template <class FloatTraits>
+		struct impl_base<double, ieee754_binary64, FloatTraits>
+		{
+			using format = ieee754_binary64;
+			using carrier_uint = typename FloatTraits::carrier_uint;
+			using cache_entry_type = typename cache_holder<format>::cache_entry_type;
+			static constexpr auto significand_bits = format::significand_bits;
+			static constexpr auto cache_bits = cache_holder<format>::cache_bits;
+			static constexpr auto carrier_bits = FloatTraits::carrier_bits;
+			static constexpr int kappa = 2;
+
+			static_assert(std::is_same<typename FloatTraits::format, format>::value, "");
+
+			static carrier_uint compute_mul(carrier_uint u, cache_entry_type const& cache) noexcept
+			{
+				return wuint::umul192_upper64(u, cache);
+			}
+
+			static std::uint32_t compute_delta(cache_entry_type const& cache, int beta_minus_1) noexcept
+			{
+				return std::uint32_t(cache.high() >> (carrier_bits - 1 - beta_minus_1));
+			}
+
+			static bool compute_mul_parity(carrier_uint two_f,
+				cache_entry_type const& cache, int beta_minus_1) noexcept
+			{
+				assert(beta_minus_1 >= 1);
+				assert(beta_minus_1 < 64);
+					return ((wuint::umul192_middle64(two_f, cache) >>
+						(64 - beta_minus_1)) & 1) != 0;
+			}
+
+			static carrier_uint compute_left_endpoint_for_shorter_interval_case(
+				cache_entry_type const& cache, int beta_minus_1) noexcept
+			{
+				return (cache.high() - (cache.high() >> (significand_bits + 2))) >>
+					(carrier_bits - significand_bits - 1 - beta_minus_1);
+			}
+
+			static carrier_uint compute_right_endpoint_for_shorter_interval_case(
+				cache_entry_type const& cache, int beta_minus_1) noexcept
+			{
+				return (cache.high() + (cache.high() >> (significand_bits + 1))) >>
+					(carrier_bits - significand_bits - 1 - beta_minus_1);
+			}
+
+			static carrier_uint compute_round_up_for_shorter_interval_case(
+				cache_entry_type const& cache, int beta_minus_1) noexcept
+			{
+				return ((cache.high() >> (carrier_bits - significand_bits - 2 - beta_minus_1)) + 1) / 2;
+			}
+
+			// Remove trailing zeros from n and return the number of zeros removed.
+			JKJ_FORCEINLINE static int remove_trailing_zeros(carrier_uint& n) noexcept {
+				// Divide by 10^8 and reduce to 32-bits.
+				// Since ret_value.significand <= (2^64 - 1) / 1000 < 10^17,
+				// both of the quotient and the r should fit in 32-bits.
+
+				using divtable32 = div::division_by_5<std::uint32_t>;
+
+				// If the number is divisible by 1'0000'0000, work with the quotient.
+				auto quotient_by_pow10_8 = std::uint32_t(div::divide_by_pow10<8, 54, 0>(n));
+				auto remainder = std::uint32_t(n - 1'0000'0000 * quotient_by_pow10_8);
+
+				if (remainder == 0) {
+					auto n32 = quotient_by_pow10_8;
+					std::uint32_t quotient32;
+
+					// Is n divisible by 10^8?
+					// This branch is extremely unlikely.
+					// I suspect it is impossible to get into this branch.
+					if ((n32 & 0xff) == 0) {
+						quotient32 = (n32 >> 8) * divtable32::mod_inv(8);
+						if (quotient32 <= divtable32::max_quotients(8)) {
+							n = quotient32;
+							return 16;
+						}
+					}
+
+					// Otherwise, perform a binary search.
+					int s = 8;
+
+					// Is n divisible by 10^4?
+					if ((n32 & 0xf) == 0) {
+						quotient32 = (n32 >> 4) * divtable32::mod_inv(4);
+						if (quotient32 <= divtable32::max_quotients(4)) {
+							n32 = quotient32;
+							s |= 0x4;
+						}
+					}
+
+					// Is n divisible by 10^2?
+					if ((n32 & 0x3) == 0) {
+						quotient32 = (n32 >> 2) * divtable32::mod_inv(2);
+						if (quotient32 <= divtable32::max_quotients(2)) {
+							n32 = quotient32;
+							s |= 0x2;
+						}
+					}
+
+					// Is n divisible by 10^1?
+					if ((n32 & 0x1) == 0) {
+						quotient32 = (n32 >> 1) * divtable32::mod_inv(1);
+						if (quotient32 <= divtable32::max_quotients(1)) {
+							n32 = quotient32;
+							s |= 0x1;
+						}
+					}
+
+					n = n32;
+					return s;
+				}
+
+				// If the number is not divisible by 1'0000'0000, work with the remainder.
+
+				// Perform a binary search.
+				std::uint32_t quotient32;
+				std::uint32_t multiplier = 1'0000'0000;
+				int s = 0;
+
+				// Is n divisible by 10^4?
+				if ((remainder & 0xf) == 0) {
+					quotient32 = (remainder >> 4) * divtable32::mod_inv(4);
+					if (quotient32 <= divtable32::max_quotients(4)) {
+						remainder = quotient32;
+						multiplier = 1'0000;
+						s |= 0x4;
+					}
+				}
+
+				// Is n divisible by 10^2?
+				if ((remainder & 0x3) == 0) {
+					quotient32 = (remainder >> 2) * divtable32::mod_inv(2);
+					if (quotient32 <= divtable32::max_quotients(2)) {
+						remainder = quotient32;
+						multiplier = (s == 4 ? 100 : 100'0000);
+						s |= 0x2;
+					}
+				}
+
+				// Is n divisible by 10^1?
+				if ((remainder & 0x1) == 0) {
+					quotient32 = (remainder >> 1) * divtable32::mod_inv(1);
+					if (quotient32 <= divtable32::max_quotients(1)) {
+						remainder = quotient32;
+						multiplier = (multiplier >> 1) * divtable32::mod_inv(1);
+						s |= 0x1;
+					}
+				}
+
+				n = remainder + quotient_by_pow10_8 * carrier_uint(multiplier);
+				return s;
+			}
+		};
+
+
 		template <class Float, class FloatTraits>
-		struct impl : private FloatTraits, private FloatTraits::format
+		struct impl : private FloatTraits, private FloatTraits::format,
+			public impl_base<Float, typename FloatTraits::format, FloatTraits>
 		{
 			using format = typename FloatTraits::format;
 			using carrier_uint = typename FloatTraits::carrier_uint;
@@ -2440,6 +2714,14 @@ namespace dragonbox {
 			using format::max_exponent;
 			using format::exponent_bias;
 			using format::decimal_digits;
+
+			using base = impl_base<Float, format, FloatTraits>;
+			using base::compute_mul;
+			using base::compute_delta;
+			using base::compute_mul_parity;
+			using base::compute_left_endpoint_for_shorter_interval_case;
+			using base::compute_right_endpoint_for_shorter_interval_case;
+			using base::compute_round_up_for_shorter_interval_case;
 
 			static constexpr int kappa = std::is_same<format, ieee754_binary32>::value ? 1 : 2;
 			static_assert(kappa >= 1, "");
@@ -2569,7 +2851,7 @@ namespace dragonbox {
 					if (r == 0 && !interval_type.include_right_endpoint() &&
 						is_product_integer<integer_check_case_id::fc_pm_half>(two_fr, exponent, minus_k))
 					{
-						if constexpr (BinaryToDecimalRoundingPolicy::tag ==
+						JKJ_IF_CONSTEXPR (BinaryToDecimalRoundingPolicy::tag ==
 							policy_impl::binary_to_decimal_rounding::tag_t::do_not_care)
 						{
 							ret_value.significand *= 10;
@@ -2613,7 +2895,7 @@ namespace dragonbox {
 				ret_value.significand *= 10;
 				ret_value.exponent = minus_k + kappa;
 
-				if constexpr (BinaryToDecimalRoundingPolicy::tag ==
+				JKJ_IF_CONSTEXPR (BinaryToDecimalRoundingPolicy::tag ==
 					policy_impl::binary_to_decimal_rounding::tag_t::do_not_care)
 				{
 					// Normally, we want to compute
@@ -2662,7 +2944,7 @@ namespace dragonbox {
 							// If z^(f) >= epsilon^(f), we might have a tie
 							// when z^(f) == epsilon^(f), or equivalently, when y is an integer.
 							// For tie-to-up case, we can just choose the upper one.
-							if constexpr (BinaryToDecimalRoundingPolicy::tag !=
+							JKJ_IF_CONSTEXPR (BinaryToDecimalRoundingPolicy::tag !=
 								policy_impl::binary_to_decimal_rounding::tag_t::away_from_zero)
 							{
 								if (is_product_integer<integer_check_case_id::fc>(
@@ -2723,7 +3005,7 @@ namespace dragonbox {
 				ret_value.exponent = minus_k;
 
 				// When tie occurs, choose one of them according to the rule.
-				if constexpr (BinaryToDecimalRoundingPolicy::tag !=
+				JKJ_IF_CONSTEXPR (BinaryToDecimalRoundingPolicy::tag !=
 					policy_impl::binary_to_decimal_rounding::tag_t::do_not_care &&
 					BinaryToDecimalRoundingPolicy::tag !=
 					policy_impl::binary_to_decimal_rounding::tag_t::away_from_zero)
@@ -2924,234 +3206,6 @@ namespace dragonbox {
 				return ret_value;
 			}
 
-			// Remove trailing zeros from n and return the number of zeros removed.
-			JKJ_FORCEINLINE static int remove_trailing_zeros(carrier_uint& n) noexcept {
-				constexpr auto max_power = calculate_max_power_of_10<carrier_uint, kappa>();
-
-				if constexpr (std::is_same<format, ieee754_binary32>::value) {
-					static_assert(max_power == 7, "Assertion failed! Did you change kappa?");
-
-					using divtable = div::division_by_5<carrier_uint>;
-
-					// Perform a binary search.
-					carrier_uint quotient;
-					int s = 0;
-
-					// Is n divisible by 10^4?
-					if ((n & 0xf) == 0) {
-						quotient = (n >> 4) * divtable::mod_inv(4);
-						if (quotient <= divtable::max_quotients(4)) {
-							n = quotient;
-							s |= 0x4;
-						}
-					}
-					
-					// Is n divisible by 10^2?
-					if ((n & 0x3) == 0) {
-						quotient = (n >> 2) * divtable::mod_inv(2);
-						if (quotient <= divtable::max_quotients(2)) {
-							n = quotient;
-							s |= 0x2;
-						}
-					}
-
-					// Is n divisible by 10^1?
-					if ((n & 0x1) == 0) {
-						quotient = (n >> 1) * divtable::mod_inv(1);
-						if (quotient <= divtable::max_quotients(1)) {
-							n = quotient;
-							s |= 0x1;
-						}
-					}
-
-					return s;
-				}
-				else {
-					static_assert(std::is_same<format, ieee754_binary64>::value, "");
-					static_assert(max_power == 16, "Assertion failed! Did you change kappa?");
-
-					// Divide by 10^8 and reduce to 32-bits.
-					// Since ret_value.significand <= (2^64 - 1) / 1000 < 10^17,
-					// both of the quotient and the r should fit in 32-bits.
-
-					using divtable32 = div::division_by_5<std::uint32_t>;
-
-					// If the number is divisible by 1'0000'0000, work with the quotient.
-					auto quotient_by_pow10_8 = std::uint32_t(div::divide_by_pow10<8, 54, 0>(n));
-					auto remainder = std::uint32_t(n - 1'0000'0000 * quotient_by_pow10_8);
-
-					if (remainder == 0) {
-						auto n32 = quotient_by_pow10_8;
-						std::uint32_t quotient32;
-
-						// Is n divisible by 10^8?
-						// This branch is extremely unlikely.
-						// I suspect it is impossible to get into this branch.
-						if ((n32 & 0xff) == 0) {
-							quotient32 = (n32 >> 8) * divtable32::mod_inv(8);
-							if (quotient32 <= divtable32::max_quotients(8)) {
-								n = quotient32;
-								return 16;
-							}
-						}
-
-						// Otherwise, perform a binary search.
-						int s = 8;
-
-						// Is n divisible by 10^4?
-						if ((n32 & 0xf) == 0) {
-							quotient32 = (n32 >> 4) * divtable32::mod_inv(4);
-							if (quotient32 <= divtable32::max_quotients(4)) {
-								n32 = quotient32;
-								s |= 0x4;
-							}
-						}
-
-						// Is n divisible by 10^2?
-						if ((n32 & 0x3) == 0) {
-							quotient32 = (n32 >> 2) * divtable32::mod_inv(2);
-							if (quotient32 <= divtable32::max_quotients(2)) {
-								n32 = quotient32;
-								s |= 0x2;
-							}
-						}
-
-						// Is n divisible by 10^1?
-						if ((n32 & 0x1) == 0) {
-							quotient32 = (n32 >> 1) * divtable32::mod_inv(1);
-							if (quotient32 <= divtable32::max_quotients(1)) {
-								n32 = quotient32;
-								s |= 0x1;
-							}
-						}							
-
-						n = n32;
-						return s;
-					}
-
-					// If the number is not divisible by 1'0000'0000, work with the remainder.
-
-					// Perform a binary search.
-					std::uint32_t quotient32;
-					std::uint32_t multiplier = 1'0000'0000;
-					int s = 0;
-
-					// Is n divisible by 10^4?
-					if ((remainder & 0xf) == 0) {
-						quotient32 = (remainder >> 4) * divtable32::mod_inv(4);
-						if (quotient32 <= divtable32::max_quotients(4)) {
-							remainder = quotient32;
-							multiplier = 1'0000;
-							s |= 0x4;
-						}
-					}
-
-					// Is n divisible by 10^2?
-					if ((remainder & 0x3) == 0) {
-						quotient32 = (remainder >> 2) * divtable32::mod_inv(2);
-						if (quotient32 <= divtable32::max_quotients(2)) {
-							remainder = quotient32;
-							multiplier = (s == 4 ? 100 : 100'0000);
-							s |= 0x2;
-						}
-					}
-
-					// Is n divisible by 10^1?
-					if ((remainder & 0x1) == 0) {
-						quotient32 = (remainder >> 1) * divtable32::mod_inv(1);
-						if (quotient32 <= divtable32::max_quotients(1)) {
-							remainder = quotient32;
-							multiplier = (multiplier >> 1) * divtable32::mod_inv(1);
-							s |= 0x1;
-						}
-					}
-
-					n = remainder + quotient_by_pow10_8 * carrier_uint(multiplier);
-					return s;
-				}
-			}
-
-			static carrier_uint compute_mul(carrier_uint u, cache_entry_type const& cache) noexcept
-			{
-				if constexpr (std::is_same<format, ieee754_binary32>::value) {
-					return wuint::umul96_upper32(u, cache);
-				}
-				else {
-					static_assert(std::is_same<format, ieee754_binary64>::value, "");
-					return wuint::umul192_upper64(u, cache);
-				}
-			}
-
-			static std::uint32_t compute_delta(cache_entry_type const& cache, int beta_minus_1) noexcept
-			{
-				if constexpr (std::is_same<format, ieee754_binary32>::value) {
-					return std::uint32_t(cache >> (cache_bits - 1 - beta_minus_1));
-				}
-				else {
-					static_assert(std::is_same<format, ieee754_binary64>::value, "");
-					return std::uint32_t(cache.high() >> (carrier_bits - 1 - beta_minus_1));
-				}
-			}
-
-			static bool compute_mul_parity(carrier_uint two_f,
-				cache_entry_type const& cache, int beta_minus_1) noexcept
-			{
-				assert(beta_minus_1 >= 1);
-				assert(beta_minus_1 < 64);
-
-				if constexpr (std::is_same<format, ieee754_binary32>::value) {
-					return ((wuint::umul96_lower64(two_f, cache) >>
-						(64 - beta_minus_1)) & 1) != 0;
-				}
-				else {
-					static_assert(std::is_same<format, ieee754_binary64>::value, "");
-					return ((wuint::umul192_middle64(two_f, cache) >>
-						(64 - beta_minus_1)) & 1) != 0;
-				}
-			}
-
-			static carrier_uint compute_left_endpoint_for_shorter_interval_case(
-				cache_entry_type const& cache, int beta_minus_1) noexcept
-			{
-				if constexpr (std::is_same<format, ieee754_binary32>::value) {
-					return carrier_uint(
-						(cache - (cache >> (significand_bits + 2))) >>
-						(cache_bits - significand_bits - 1 - beta_minus_1));
-				}
-				else {
-					static_assert(std::is_same<format, ieee754_binary64>::value, "");
-					return (cache.high() - (cache.high() >> (significand_bits + 2))) >>
-						(carrier_bits - significand_bits - 1 - beta_minus_1);
-				}
-			}
-
-			static carrier_uint compute_right_endpoint_for_shorter_interval_case(
-				cache_entry_type const& cache, int beta_minus_1) noexcept
-			{
-				if constexpr (std::is_same<format, ieee754_binary32>::value) {
-					return carrier_uint(
-						(cache + (cache >> (significand_bits + 1))) >>
-						(cache_bits - significand_bits - 1 - beta_minus_1));
-				}
-				else {
-					static_assert(std::is_same<format, ieee754_binary64>::value, "");
-					return (cache.high() + (cache.high() >> (significand_bits + 1))) >>
-						(carrier_bits - significand_bits - 1 - beta_minus_1);
-				}
-			}
-
-			static carrier_uint compute_round_up_for_shorter_interval_case(
-				cache_entry_type const& cache, int beta_minus_1) noexcept
-			{
-				if constexpr (std::is_same<format, ieee754_binary32>::value) {
-					return (carrier_uint(cache >> (cache_bits - significand_bits - 2 - beta_minus_1)) + 1) / 2;
-				}
-				else {
-					static_assert(std::is_same<format, ieee754_binary64>::value, "");
-					return ((cache.high() >> (carrier_bits - significand_bits - 2 - beta_minus_1)) + 1) / 2;
-				}
-			}
-
 			static bool is_right_endpoint_integer_shorter_interval(int exponent) noexcept {
 				return exponent >= case_shorter_interval_right_endpoint_lower_threshold &&
 					exponent <= case_shorter_interval_right_endpoint_upper_threshold;
@@ -3170,7 +3224,7 @@ namespace dragonbox {
 			static bool is_product_integer(carrier_uint two_f, int exponent, int minus_k) noexcept
 			{
 				// Case I: f = fc +- 1/2
-				if constexpr (case_id == integer_check_case_id::fc_pm_half)
+				JKJ_IF_CONSTEXPR (case_id == integer_check_case_id::fc_pm_half)
 				{
 					if (exponent < case_fc_pm_half_lower_threshold) {
 						return false;
@@ -3239,40 +3293,42 @@ namespace dragonbox {
 				static constexpr auto found_info = info;
 			};
 
+			template <class Base, class... Policies>
+			struct base_default_pair_get_policy;
+
+			template <class Base, class... Policies>
+			using base_default_pair_get_policy_t
+				= typename base_default_pair_get_policy<Base, Policies...>::type;
+
+			template <class Base, class FoundPolicyInfo>
+			struct base_default_pair_get_policy<Base, FoundPolicyInfo> {
+				using type = FoundPolicyInfo;
+			};
+
+			template <class Base, class FoundPolicyInfo, class FirstPolicy, class... RemainingPolicies>
+			struct base_default_pair_get_policy<Base, FoundPolicyInfo, FirstPolicy, RemainingPolicies...> {
+				using type = base_default_pair_get_policy_t
+					< Base
+					, std::conditional_t
+						< std::is_base_of<Base, FirstPolicy>::value
+						, found_policy_pair
+							< FirstPolicy
+							, ( FoundPolicyInfo::found_info == policy_found_info::not_found
+								? policy_found_info::unique
+								: policy_found_info::repeated ) >
+						, FoundPolicyInfo >
+					, RemainingPolicies... >;
+			};
+
 			template <class Base, class DefaultPolicy>
 			struct base_default_pair {
 				using base = Base;
 
-				template <class FoundPolicyInfo>
-				static constexpr FoundPolicyInfo get_policy_impl(FoundPolicyInfo) {
-					return{};
-				}
-				template <class FoundPolicyInfo, class FirstPolicy, class... RemainingPolicies>
-				static constexpr auto get_policy_impl(FoundPolicyInfo, FirstPolicy, RemainingPolicies... remainings) {
-					if constexpr (std::is_base_of<Base, FirstPolicy>::value) {
-						if constexpr (FoundPolicyInfo::found_info == policy_found_info::not_found) {
-							return get_policy_impl(
-								found_policy_pair<FirstPolicy, policy_found_info::unique>{},
-								remainings...);
-						}
-						else {
-							return get_policy_impl(
-								found_policy_pair<FirstPolicy, policy_found_info::repeated>{},
-								remainings...);
-						}
-					}
-					else {
-						return get_policy_impl(FoundPolicyInfo{},
-							remainings...);
-					}
-				}
-
 				template <class... Policies>
-				static constexpr auto get_policy(Policies... policies) {
-					return get_policy_impl(
-						found_policy_pair<DefaultPolicy, policy_found_info::not_found>{},
-						policies...);
-				}
+				using get_policy = base_default_pair_get_policy_t
+						< Base
+						, found_policy_pair<DefaultPolicy, policy_found_info::not_found>
+						, Policies... >;
 			};
 			template <class... BaseDefaultPairs>
 			struct base_default_pair_list {};
@@ -3329,7 +3385,8 @@ namespace dragonbox {
 				found_policy_pair_list<repeated, FoundPolicyPairs...>,
 				Policies... policies)
 			{
-				using new_found_policy_pair = decltype(FirstBaseDefaultPair::get_policy(policies...));
+				using new_found_policy_pair =
+					typename FirstBaseDefaultPair::template get_policy<Policies...>;
 
 				return make_policy_holder_impl(
 					base_default_pair_list<RemainingBaseDefaultPairs...>{},
@@ -3398,8 +3455,12 @@ namespace dragonbox {
 		auto ret = policy_holder::delegate(s,
 			[br, exponent_bits, s](auto interval_type_provider) {
 				constexpr auto tag = decltype(interval_type_provider)::tag;
+				static_assert(
+					tag == decimal_to_binary_rounding::tag_t::to_nearest ||
+					tag == decimal_to_binary_rounding::tag_t::left_closed_directed ||
+					tag == decimal_to_binary_rounding::tag_t::right_closed_directed, "");
 
-				if constexpr (tag == decimal_to_binary_rounding::tag_t::to_nearest) {
+				JKJ_IF_CONSTEXPR (tag == decimal_to_binary_rounding::tag_t::to_nearest) {
 					return detail::impl<Float>::template
 						compute_nearest<return_type, decltype(interval_type_provider),
 							typename policy_holder::trailing_zero_policy,
@@ -3407,7 +3468,7 @@ namespace dragonbox {
 							typename policy_holder::cache_policy
 						>(s, exponent_bits);
 				}
-				else if constexpr (tag == decimal_to_binary_rounding::tag_t::left_closed_directed) {
+				else JKJ_IF_CONSTEXPR (tag == decimal_to_binary_rounding::tag_t::left_closed_directed) {
 					return detail::impl<Float>::template
 						compute_left_closed_directed<return_type,
 							typename policy_holder::trailing_zero_policy,
@@ -3415,7 +3476,6 @@ namespace dragonbox {
 						>(br, exponent_bits);
 				}
 				else {
-					static_assert(tag == decimal_to_binary_rounding::tag_t::right_closed_directed, "");
 					return detail::impl<Float>::template
 						compute_right_closed_directed<return_type,
 							typename policy_holder::trailing_zero_policy,
@@ -3433,6 +3493,11 @@ namespace dragonbox {
 #undef JKJ_HAS_COUNTR_ZERO_INTRINSIC
 #undef JKJ_FORCEINLINE
 #undef JKJ_SAFEBUFFERS
+#undef JKJ_IF_CONSTEXPR
+#if defined(JKJ_MSC_WARNING_4127_DISABLED)
+#pragma warning(pop)
+#undef JKJ_MSC_WARNING_4127_DISABLED
+#endif
 
 #endif
 

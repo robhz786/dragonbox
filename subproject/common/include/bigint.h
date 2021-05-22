@@ -33,6 +33,12 @@
 #include <cassert>
 #include <iterator>
 
+#if defined(__cpp_if_constexpr)
+#	define JKJ_IF_CONSTEXPR if constexpr
+#else
+#	define JKJ_IF_CONSTEXPR if
+#endif
+
 namespace jkj{
 namespace dragonbox {
 	namespace detail {
@@ -812,7 +818,7 @@ namespace dragonbox {
 						// If n is larger, right-shift by one bit
 						if (n_shifted.elements[comparison_idx] > elements[comparison_idx]) {
 							if (base_trailing_zeros == 0) {
-								if constexpr (!decltype(is_before_iteration)::value) {
+								JKJ_IF_CONSTEXPR (!decltype(is_before_iteration)::value) {
 									// If we cannot shift further, stop
 									if (base_idx == 0) {
 										return false;
@@ -854,7 +860,7 @@ namespace dragonbox {
 						}
 					}
 
-					if constexpr (decltype(is_before_iteration)::value) {
+					JKJ_IF_CONSTEXPR (decltype(is_before_iteration)::value) {
 						// Set leading bit position of quotient
 						quotient.leading_one_pos.element_pos = base_idx;
 						quotient.leading_one_pos.bit_pos = base_trailing_zeros + 1;
@@ -934,4 +940,5 @@ namespace dragonbox {
 }
 }
 
+#undef JKJ_IF_CONSTEXPR
 #endif

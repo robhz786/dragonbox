@@ -43,6 +43,17 @@
 #define JKJ_SAFEBUFFERS
 #endif
 
+#if defined(__cpp_if_constexpr)
+#	define JKJ_IF_CONSTEXPR if constexpr
+#else
+#	define JKJ_IF_CONSTEXPR if
+#	if defined(_MSC_VER)
+#		pragma warning( push )
+#		pragma warning( disable : 4127 ) // "Conditional expression is constant"
+#		define JKJ_MSC_WARNING_4127_DISABLED
+#	endif
+#endif
+
 namespace jkj {
 	namespace grisu_exact_detail {
 		////////////////////////////////////////////////////////////////////////////////////////
@@ -179,13 +190,14 @@ namespace jkj {
 			assert(x != 0);
 #if (defined(__GNUC__) || defined(__clang__)) && defined(__x86_64__)
 			int index;
-			if constexpr (std::is_same<UInt, std::uint32_t>::value) {
-				if constexpr (sizeof(unsigned long) == 4) {
+			static_assert(sizeof(unsigned long) == 4 || sizeof(unsigned int) == 4,
+				"jkj::grisu_exact: at least one of unsigned int and"
+				" unsigned long should be 4 bytes long");
+			JKJ_IF_CONSTEXPR (std::is_same<UInt, std::uint32_t>::value) {
+				JKJ_IF_CONSTEXPR (sizeof(unsigned long) == 4) {
 					index = __builtin_ctzl((unsigned long)x);
 				}
 				else {
-					static_assert(sizeof(unsigned int) == 4,
-						"jkj::grisu_exact: at least one of unsigned int and unsigned long should be 4 bytes long");
 					index = __builtin_ctz((unsigned int)x);
 				}
 			}
@@ -197,7 +209,7 @@ namespace jkj {
 			return index >= exp;
 #elif defined(_MSC_VER) && defined(_M_X64)
 			unsigned long index;
-			if constexpr (std::is_same<UInt, std::uint32_t>::value) {
+			JKJ_IF_CONSTEXPR (std::is_same<UInt, std::uint32_t>::value) {
 				_BitScanForward(&index, x);
 			}
 			else {
@@ -270,7 +282,7 @@ namespace jkj {
 		// This function is accurate if e is in the range [-1650,1650]
 		template <bool should_assert = true>
 		constexpr int floor_log10_pow2(int e) noexcept {
-			if constexpr (should_assert) {
+			JKJ_IF_CONSTEXPR(should_assert) {
 				assert(e >= -1650 && e <= 1650);
 			}
 
@@ -287,7 +299,7 @@ namespace jkj {
 		// This function is accurate if e is in the range [-642,642]
 		template <bool should_assert = true>
 		constexpr int floor_log2_pow10(int e) noexcept {
-			if constexpr (should_assert) {
+			JKJ_IF_CONSTEXPR (should_assert) {
 				assert(e >= -642 && e <= 642);
 			}
 
@@ -307,7 +319,7 @@ namespace jkj {
 		// and never executed at runtime.
 		template <bool should_assert = true>
 		constexpr int floor_log5_pow2(int e) noexcept {
-			if constexpr (should_assert) {
+			JKJ_IF_CONSTEXPR (should_assert) {
 				assert(e >= -65536 && e <= 65536);
 			}
 
@@ -1163,6 +1175,15 @@ namespace jkj {
 		// Forward declaration of the main class
 		template <class Float>
 		struct grisu_exact_impl;
+
+		constexpr std::uint64_t extract_high64(uint128 x) noexcept
+		{
+			return x.high();
+		}
+		constexpr std::uint64_t extract_high64(std::uint64_t x) noexcept
+		{
+			return x;
+		}
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////////
@@ -1760,6 +1781,16 @@ namespace jkj {
 
 			//// The main algorithm assumes the input is a normal/subnormal finite number
 
+			template <typename Ret, typename Br>
+			static void set_return_sign(std::true_type, Ret& ret_value, const Br& br) noexcept
+			{
+				ret_value.is_negative = br.is_negative();
+			}
+			template <typename Ret, typename Br>
+			static void set_return_sign(std::false_type, Ret&, const Br&) noexcept
+			{
+			}
+
 			template <bool return_sign, class IntervalTypeProvider, class CorrectRoundingSearch>
 			JKJ_SAFEBUFFERS
 			static fp_t<Float, return_sign> compute(bit_representation_t<Float> br) noexcept
@@ -1772,9 +1803,7 @@ namespace jkj {
 
 				auto interval_type = IntervalTypeProvider{}(br);
 
-				if constexpr (return_sign) {
-					ret_value.is_negative = br.is_negative();
-				}
+				set_return_sign(std::integral_constant<bool, return_sign>{}, ret_value, br);
 				auto significand = br.f << exponent_bits;
 
 				auto exponent = int((br.f >> precision) & (exponent_bits_mask >> precision));
@@ -1790,13 +1819,13 @@ namespace jkj {
 				// Compute the endpoints
 				extended_significand_type fr;
 				// For nearest rounding
-				if constexpr (IntervalTypeProvider::tag ==
+				JKJ_IF_CONSTEXPR (IntervalTypeProvider::tag ==
 					grisu_exact_rounding_modes::to_nearest_tag)
 				{
 					fr = significand | boundary_bit;
 				}
 				// For left-closed directed rounding
-				else if constexpr (IntervalTypeProvider::tag ==
+				else JKJ_IF_CONSTEXPR (IntervalTypeProvider::tag ==
 					grisu_exact_rounding_modes::left_closed_directed_tag)
 				{
 					fr = significand + normal_interval_length;
@@ -1815,17 +1844,18 @@ namespace jkj {
 				auto const cache = jkj::grisu_exact_detail::get_cache<Float>(-minus_k);
 
 				extended_significand_type zi;
-				if constexpr (IntervalTypeProvider::tag ==
+				JKJ_IF_CONSTEXPR (IntervalTypeProvider::tag ==
 					grisu_exact_rounding_modes::left_closed_directed_tag)
 				{
 					// Take care of the case when overflow occurs
 					if (fr == 0) {
-						if constexpr (sizeof(Float) == 4) {
-							zi = extended_significand_type(cache >>
+						const auto cache64 = jkj::grisu_exact_detail::extract_high64(cache);
+						JKJ_IF_CONSTEXPR (sizeof(Float) == 4) {
+							zi = extended_significand_type(cache64 >>
 								extended_precision >> minus_beta);
 						}
 						else {
-							zi = cache.high() >> minus_beta;
+							zi = cache64 >> minus_beta;
 						}
 					}
 					else {
@@ -1903,13 +1933,13 @@ namespace jkj {
 					}
 
 					// Decrease kappa by 1 + lambda (lambda = 1)
-					if constexpr (initial_kappa == 2) {
+					JKJ_IF_CONSTEXPR (initial_kappa == 2) {
 						// kappa = 0
 						ret_value.significand = zi;
 						r = 0;
 					}
 					else {
-						static_assert(initial_kappa == 3, "");
+						static_assert(initial_kappa == 2 || initial_kappa == 3, "");
 						// kappa = 1
 						ret_value.significand *= 100;
 						ret_value.significand += 10 * quotient + (std::uint32_t(new_r) / 10);
@@ -1921,13 +1951,13 @@ namespace jkj {
 					// Since kappa is already the smallest possible value,
 					// we do not need to search for kappa'
 					// (But still need to get away from the boundary for certain cases)
-					if constexpr (CorrectRoundingSearch::tag !=
+					JKJ_IF_CONSTEXPR (CorrectRoundingSearch::tag !=
 						grisu_exact_correct_rounding::do_not_care_tag &&
 						IntervalTypeProvider::tag ==
 						grisu_exact_rounding_modes::to_nearest_tag)
 					{
 						// For binary32 case, kappa == 0 case requires a separate correct rounding search
-						if constexpr (min_kappa == 0)
+						JKJ_IF_CONSTEXPR (min_kappa == 0)
 						{
 							goto correct_rounding_search_when_kappa_is_0_label;
 						}
@@ -1956,10 +1986,10 @@ namespace jkj {
 				// Perform binary search
 				divisor = power_of_10<initial_kappa>;
 
-				if constexpr (sizeof(Float) == 4) {
+				static_assert( (sizeof(Float) == 4 && (max_kappa - initial_kappa < 8))
+					|| (max_kappa - initial_kappa < 16), "" );
+				JKJ_IF_CONSTEXPR (sizeof(Float) == 4) {
 					// This procedure strictly depends on our specific choice of these parameters:
-					static_assert(max_kappa - initial_kappa < 8, "");
-
 					increasing_search<4, IntervalTypeProvider::tag, true>(ret_value, interval_type,
 						zf_vs_deltaf, exponent, minus_k, minus_beta, significand, r, divisor, deltai, cache);
 					increasing_search<2, IntervalTypeProvider::tag, false>(ret_value, interval_type,
@@ -1969,8 +1999,6 @@ namespace jkj {
 				}
 				else {
 					// This procedure strictly depends on our specific choice of these parameters:
-					static_assert(max_kappa - initial_kappa < 16, "");
-
 					increasing_search<8, IntervalTypeProvider::tag, true>(ret_value, interval_type,
 						zf_vs_deltaf, exponent, minus_k, minus_beta, significand, r, divisor, deltai, cache);
 					increasing_search<4, IntervalTypeProvider::tag, false>(ret_value, interval_type,
@@ -2003,7 +2031,7 @@ namespace jkj {
 							}
 							else if (divisor == deltai) {
 								// For nearest rounding only
-								if constexpr (IntervalTypeProvider::tag ==
+								JKJ_IF_CONSTEXPR (IntervalTypeProvider::tag ==
 									grisu_exact_rounding_modes::to_nearest_tag)
 								{
 									// We need to decrease kappa if
@@ -2013,7 +2041,7 @@ namespace jkj {
 									// always true because we already have checked it,
 									// and otherwise it is always false.
 									// The second condition is true if and only if e = -(q-p-1).
-									if constexpr (decltype(interval_type)::is_symmetric)
+									JKJ_IF_CONSTEXPR (decltype(interval_type)::is_symmetric)
 									{
 										if (exponent == -int(extended_precision - precision - 1))
 										{
@@ -2031,7 +2059,7 @@ namespace jkj {
 							--ret_value.exponent;
 						}
 
-						if constexpr (CorrectRoundingSearch::tag ==
+						JKJ_IF_CONSTEXPR (CorrectRoundingSearch::tag ==
 							grisu_exact_correct_rounding::do_not_care_tag ||
 							IntervalTypeProvider::tag !=
 							grisu_exact_rounding_modes::to_nearest_tag)
@@ -2039,7 +2067,7 @@ namespace jkj {
 							--ret_value.significand;
 						}
 
-						if constexpr (CorrectRoundingSearch::tag !=
+						JKJ_IF_CONSTEXPR (CorrectRoundingSearch::tag !=
 							grisu_exact_correct_rounding::do_not_care_tag &&
 							IntervalTypeProvider::tag ==
 							grisu_exact_rounding_modes::left_closed_directed_tag)
@@ -2048,7 +2076,7 @@ namespace jkj {
 						}
 
 						// For binary32 case, kappa == 0 case requires a separate correct rounding search
-						if constexpr (CorrectRoundingSearch::tag !=
+						JKJ_IF_CONSTEXPR (CorrectRoundingSearch::tag !=
 							grisu_exact_correct_rounding::do_not_care_tag &&
 							IntervalTypeProvider::tag ==
 							grisu_exact_rounding_modes::to_nearest_tag &&
@@ -2068,7 +2096,7 @@ namespace jkj {
 				// Just to silence "unused label" warnings
 				goto correct_rounding_search_label;
 			correct_rounding_search_label:
-				if constexpr (CorrectRoundingSearch::tag !=
+				JKJ_IF_CONSTEXPR (CorrectRoundingSearch::tag !=
 					grisu_exact_correct_rounding::do_not_care_tag &&
 					IntervalTypeProvider::tag ==
 					grisu_exact_rounding_modes::left_closed_directed_tag)
@@ -2124,7 +2152,7 @@ namespace jkj {
 						}
 					}
 				}
-				else if constexpr (CorrectRoundingSearch::tag !=
+				else JKJ_IF_CONSTEXPR (CorrectRoundingSearch::tag !=
 					grisu_exact_correct_rounding::do_not_care_tag &&
 					IntervalTypeProvider::tag ==
 					grisu_exact_rounding_modes::to_nearest_tag)
@@ -2170,7 +2198,7 @@ namespace jkj {
 									epsiloni -= divisor32;
 
 									// For binary32, this implies that n' should be 4
-									if constexpr (sizeof(Float) == 4) {
+									JKJ_IF_CONSTEXPR (sizeof(Float) == 4) {
 										steps = 5;
 									}
 									// For binary64, there are inputs such that
@@ -2215,7 +2243,7 @@ namespace jkj {
 							auto const yi = compute_mul(significand, cache, minus_beta);
 							// We have either yi == approx_y or yi == approx_y - 1
 							if (yi == approx_y) {
-								if constexpr (CorrectRoundingSearch::tag ==
+								JKJ_IF_CONSTEXPR (CorrectRoundingSearch::tag ==
 									grisu_exact_correct_rounding::tie_to_even_tag ||
 									CorrectRoundingSearch::tag ==
 									grisu_exact_correct_rounding::tie_to_odd_tag)
@@ -2228,7 +2256,7 @@ namespace jkj {
 									if (is_product_integer<integer_check_case_id::other>(significand, exponent, minus_k))
 									{
 										// steps vs steps - 1
-										if constexpr (CorrectRoundingSearch::tag ==
+										JKJ_IF_CONSTEXPR (CorrectRoundingSearch::tag ==
 											grisu_exact_correct_rounding::tie_to_even_tag)
 										{
 											steps = (ret_value.significand & 1) != extended_significand_type(steps & 1)
@@ -2244,7 +2272,7 @@ namespace jkj {
 										--steps;
 									}
 								}
-								else if constexpr (CorrectRoundingSearch::tag ==
+								else JKJ_IF_CONSTEXPR (CorrectRoundingSearch::tag ==
 									grisu_exact_correct_rounding::tie_to_up_tag)
 								{
 									--steps;
@@ -2266,7 +2294,7 @@ namespace jkj {
 							}
 							else if (divisor == deltai) {
 								// See the test result of verify_incorrect_rounding_removal.cpp
-								if constexpr (sizeof(Float) == 4) {
+								JKJ_IF_CONSTEXPR (sizeof(Float) == 4) {
 									if (exponent == 59) {
 										goto return_label;
 									}
@@ -2288,7 +2316,7 @@ namespace jkj {
 				// Just to silence "unused label" warnings
 				goto correct_rounding_search_when_kappa_is_0_label;
 			correct_rounding_search_when_kappa_is_0_label:
-				if constexpr (CorrectRoundingSearch::tag !=
+				JKJ_IF_CONSTEXPR (CorrectRoundingSearch::tag !=
 					grisu_exact_correct_rounding::do_not_care_tag &&
 					IntervalTypeProvider::tag ==
 					grisu_exact_rounding_modes::to_nearest_tag &&
@@ -2298,7 +2326,7 @@ namespace jkj {
 					// First, compute floor(2y)
 					auto two_yi = compute_mul(significand, cache, minus_beta - 1);
 
-					if constexpr (CorrectRoundingSearch::tag ==
+					JKJ_IF_CONSTEXPR (CorrectRoundingSearch::tag ==
 						grisu_exact_correct_rounding::tie_to_even_tag ||
 						CorrectRoundingSearch::tag ==
 						grisu_exact_correct_rounding::tie_to_odd_tag)
@@ -2311,7 +2339,7 @@ namespace jkj {
 						if (is_product_integer<integer_check_case_id::two_times_fc>(
 							significand, exponent, minus_k))
 						{
-							if constexpr (CorrectRoundingSearch::tag ==
+							JKJ_IF_CONSTEXPR (CorrectRoundingSearch::tag ==
 								grisu_exact_correct_rounding::tie_to_even_tag)
 							{
 								ret_value.significand = (two_yi / 2) % 2 == 1 ?
@@ -2327,7 +2355,7 @@ namespace jkj {
 							ret_value.significand = (two_yi + 1) / 2;
 						}
 					}
-					else if constexpr (CorrectRoundingSearch::tag ==
+					else JKJ_IF_CONSTEXPR (CorrectRoundingSearch::tag ==
 						grisu_exact_correct_rounding::tie_to_up_tag)
 					{
 						ret_value.significand = (two_yi + 1) / 2;
@@ -2348,15 +2376,7 @@ namespace jkj {
 			}
 
 			static extended_significand_type compute_mul(
-				extended_significand_type f, cache_entry_type const& cache, int minus_beta) noexcept
-			{
-				if constexpr (sizeof(Float) == 4) {
-					return umul96_upper32(f, cache) >> minus_beta;
-				}
-				else {
-					return umul192_upper64(f, cache) >> minus_beta;
-				}
-			}
+				extended_significand_type f, cache_entry_type const& cache, int minus_beta) noexcept;
 
 			template <grisu_exact_rounding_modes::tag_t tag>
 			static std::uint32_t compute_delta(bool is_edge_case,
@@ -2366,19 +2386,11 @@ namespace jkj {
 				constexpr auto q_mp_m1 = extended_precision - precision - 1;
 				constexpr auto intermediate_precision =
 					sizeof(Float) == 4 ? cache_precision : extended_precision;
-				using intermediate_type = std::conditional_t<sizeof(Float) == 4,
-					cache_entry_type, extended_significand_type>;
 
-				intermediate_type r;
-				if constexpr (sizeof(Float) == 4) {
-					r = cache;
-				}
-				else {
-					r = cache.high();
-				}
+				auto r = jkj::grisu_exact_detail::extract_high64(cache);
 
 				// For nearest rounding
-				if constexpr (tag == grisu_exact_rounding_modes::to_nearest_tag)
+				JKJ_IF_CONSTEXPR (tag == grisu_exact_rounding_modes::to_nearest_tag)
 				{
 					if (is_edge_case) {
 						r = (r >> 1) + (r >> 2);
@@ -2387,7 +2399,7 @@ namespace jkj {
 					return std::uint32_t(r >> (intermediate_precision - q_mp_m1 + minus_beta));
 				}
 				// For left-directed rounding
-				else if constexpr (tag == grisu_exact_rounding_modes::left_closed_directed_tag)
+				else JKJ_IF_CONSTEXPR (tag == grisu_exact_rounding_modes::left_closed_directed_tag)
 				{
 					return std::uint32_t(r >> (intermediate_precision - q_mp_m1 + minus_beta));
 				}
@@ -2425,12 +2437,12 @@ namespace jkj {
 				(void)f;
 				(void)minus_k;
 				// Case I: f = fc - 2^(q-p-3), Fw = 1 and Ew != Emin
-				if constexpr (case_id == integer_check_case_id::fc_minus_2_to_the_q_mp_m3_edge) {
+				JKJ_IF_CONSTEXPR (case_id == integer_check_case_id::fc_minus_2_to_the_q_mp_m3_edge) {
 					return exponent >= integer_check_exponent_lower_bound_for_q_mp_m3 &&
 						exponent <= max_exponent_for_k_geq_0;
 				}
 				// Case II: f = fc +- 2^(q-p-2), generic case
-				else if constexpr (case_id == integer_check_case_id::fc_pm_2_to_the_q_mp_m2_generic) {
+				else JKJ_IF_CONSTEXPR (case_id == integer_check_case_id::fc_pm_2_to_the_q_mp_m2_generic) {
 					if (exponent < integer_check_exponent_lower_bound_for_q_mp_m2) {
 						return false;
 					}
@@ -2450,9 +2462,9 @@ namespace jkj {
 					}
 				}
 				// Case III: f = fc - 2^(q-p-2), Fw = 1 and Ew != Emin
-				else if constexpr (case_id == integer_check_case_id::fc_pm_2_to_the_q_mp_m2_edge) {
+				else JKJ_IF_CONSTEXPR (case_id == integer_check_case_id::fc_pm_2_to_the_q_mp_m2_edge) {
 					// For IEEE-754 binary32
-					if constexpr (sizeof(Float) == 4) {
+					JKJ_IF_CONSTEXPR (sizeof(Float) == 4) {
 						return exponent >= integer_check_exponent_lower_bound_for_q_mp_m2 &&
 							exponent <= max_exponent_for_k_geq_m1;
 					}
@@ -2472,7 +2484,7 @@ namespace jkj {
 					// Exponent for 2 is negative
 					if (exponent < exp_2_upper_bound) {
 						auto exp_2 = minus_k - exponent;
-						if constexpr (case_id == integer_check_case_id::two_times_fc) {
+						JKJ_IF_CONSTEXPR (case_id == integer_check_case_id::two_times_fc) {
 							--exp_2;
 						}
 						return divisible_by_power_of_2(f, exp_2);
@@ -2506,7 +2518,7 @@ namespace jkj {
 				(void)fl;
 				(void)exponent;
 				(void)minus_k;
-				if constexpr (tag == grisu_exact_rounding_modes::to_nearest_tag)
+				JKJ_IF_CONSTEXPR (tag == grisu_exact_rounding_modes::to_nearest_tag)
 				{
 					// Generic case
 					if (fl != (sign_bit_mask - edge_case_boundary_bit))
@@ -2521,7 +2533,7 @@ namespace jkj {
 					}
 				}
 				// For left-closed directed rounding
-				else if constexpr (tag == grisu_exact_rounding_modes::left_closed_directed_tag)
+				else JKJ_IF_CONSTEXPR (tag == grisu_exact_rounding_modes::left_closed_directed_tag)
 				{
 					// Returns zf_smaller if zf = deltaf
 					return is_product_integer<integer_check_case_id::other>(
@@ -2542,14 +2554,14 @@ namespace jkj {
 			{
 				// Compute fl
 				extended_significand_type fl;
-				if constexpr (tag == grisu_exact_rounding_modes::to_nearest_tag)
+				JKJ_IF_CONSTEXPR (tag == grisu_exact_rounding_modes::to_nearest_tag)
 				{
 					fl = (fc == sign_bit_mask && exponent != min_exponent) ?
 						sign_bit_mask - edge_case_boundary_bit :
 						fc - boundary_bit;
 				}
 				// For left-closed directed rounding
-				else if constexpr (tag == grisu_exact_rounding_modes::left_closed_directed_tag)
+				else JKJ_IF_CONSTEXPR (tag == grisu_exact_rounding_modes::left_closed_directed_tag)
 				{
 					fl = fc;
 				}
@@ -2591,7 +2603,7 @@ namespace jkj {
 					return false;
 				}
 				else if (new_r == deltai) {
-					if constexpr (is_initial_search) {
+					JKJ_IF_CONSTEXPR (is_initial_search) {
 						// zf_vs_deltaf cannot be zf_larger here
 						if (zf_vs_deltaf == zf_vs_deltaf_t::not_compared_yet) {
 							if (!is_zf_smaller_than_deltaf<tag>(fc,
@@ -2633,6 +2645,21 @@ namespace jkj {
 				return true;
 			}
 		};
+
+		template <>
+		inline auto grisu_exact_impl<float>::compute_mul(
+				extended_significand_type f, cache_entry_type const& cache, int minus_beta) noexcept
+		-> extended_significand_type
+		{
+			return umul96_upper32(f, cache) >> minus_beta;
+		}
+		template <>
+		inline auto grisu_exact_impl<double>::compute_mul(
+				extended_significand_type f, cache_entry_type const& cache, int minus_beta) noexcept
+		-> extended_significand_type
+		{
+			return umul192_upper64(f, cache) >> minus_beta;
+		}
 	}
 
 	// What to do with non-finite inputs?
@@ -2673,4 +2700,10 @@ namespace jkj {
 }
 
 #undef JKJ_SAFEBUFFERS
+#undef JKJ_IF_CONSTEXPR
+#if defined(JKJ_MSC_WARNING_4127_DISABLED)
+#	pragma warning(pop)
+#	undef JKJ_MSC_WARNING_4127_DISABLED
+#endif
+
 #endif

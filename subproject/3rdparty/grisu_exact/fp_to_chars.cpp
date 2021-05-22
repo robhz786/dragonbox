@@ -40,6 +40,15 @@
 
 #include "fp_to_chars.h"
 
+#if defined(__cpp_if_constexpr)
+#	define JKJ_IF_CONSTEXPR if constexpr
+#else
+#	define JKJ_IF_CONSTEXPR if
+#	if defined(_MSC_VER)
+#		pragma warning( disable : 4127 ) // "Conditional expression is constant"
+#	endif
+#endif
+
 namespace jkj {
 	namespace fp_to_chars_detail {
 		static constexpr char radix_100_table[] = {
@@ -65,48 +74,46 @@ namespace jkj {
 			'9', '5', '9', '6', '9', '7', '9', '8', '9', '9'
 		};
 
-		template <class UInt>
+		template <class UInt, std::enable_if_t<std::is_same<UInt, std::uint32_t>::value, int> = 0>
 		static constexpr std::uint32_t decimal_length(UInt const v) {
-			if constexpr (std::is_same<UInt, std::uint32_t>::value) {
-				// Function precondition: v is not a 10-digit number.
-				// (f2s: 9 digits are sufficient for round-tripping.)
-				// (d2fixed: We print 9-digit blocks.)
-				assert(v < 1000000000);
-				if (v >= 100000000) { return 9; }
-				if (v >= 10000000) { return 8; }
-				if (v >= 1000000) { return 7; }
-				if (v >= 100000) { return 6; }
-				if (v >= 10000) { return 5; }
-				if (v >= 1000) { return 4; }
-				if (v >= 100) { return 3; }
-				if (v >= 10) { return 2; }
-				return 1;
-			}
-			else {
-				static_assert(std::is_same<UInt, std::uint64_t>::value, "");
-				// This is slightly faster than a loop.
-				// The average output length is 16.38 digits, so we check high-to-low.
-				// Function precondition: v is not an 18, 19, or 20-digit number.
-				// (17 digits are sufficient for round-tripping.)
-				assert(v < 100000000000000000L);
-				if (v >= 10000000000000000L) { return 17; }
-				if (v >= 1000000000000000L) { return 16; }
-				if (v >= 100000000000000L) { return 15; }
-				if (v >= 10000000000000L) { return 14; }
-				if (v >= 1000000000000L) { return 13; }
-				if (v >= 100000000000L) { return 12; }
-				if (v >= 10000000000L) { return 11; }
-				if (v >= 1000000000L) { return 10; }
-				if (v >= 100000000L) { return 9; }
-				if (v >= 10000000L) { return 8; }
-				if (v >= 1000000L) { return 7; }
-				if (v >= 100000L) { return 6; }
-				if (v >= 10000L) { return 5; }
-				if (v >= 1000L) { return 4; }
-				if (v >= 100L) { return 3; }
-				if (v >= 10L) { return 2; }
-				return 1;
-			}
+			// Function precondition: v is not a 10-digit number.
+			// (f2s: 9 digits are sufficient for round-tripping.)
+			// (d2fixed: We print 9-digit blocks.)
+			assert(v < 1000000000);
+			if (v >= 100000000) { return 9; }
+			if (v >= 10000000) { return 8; }
+			if (v >= 1000000) { return 7; }
+			if (v >= 100000) { return 6; }
+			if (v >= 10000) { return 5; }
+			if (v >= 1000) { return 4; }
+			if (v >= 100) { return 3; }
+			if (v >= 10) { return 2; }
+			return 1;
+		}
+		template <class UInt, std::enable_if_t<std::is_same<UInt, std::uint64_t>::value, int> = 0>
+		static constexpr std::uint32_t decimal_length(UInt const v) {
+			// This is slightly faster than a loop.
+			// The average output length is 16.38 digits, so we check high-to-low.
+			// Function precondition: v is not an 18, 19, or 20-digit number.
+			// (17 digits are sufficient for round-tripping.)
+			assert(v < 100000000000000000L);
+			if (v >= 10000000000000000L) { return 17; }
+			if (v >= 1000000000000000L) { return 16; }
+			if (v >= 100000000000000L) { return 15; }
+			if (v >= 10000000000000L) { return 14; }
+			if (v >= 1000000000000L) { return 13; }
+			if (v >= 100000000000L) { return 12; }
+			if (v >= 10000000000L) { return 11; }
+			if (v >= 1000000000L) { return 10; }
+			if (v >= 100000000L) { return 9; }
+			if (v >= 10000000L) { return 8; }
+			if (v >= 1000000L) { return 7; }
+			if (v >= 100000L) { return 6; }
+			if (v >= 10000L) { return 5; }
+			if (v >= 1000L) { return 4; }
+			if (v >= 100L) { return 3; }
+			if (v >= 10L) { return 2; }
+			return 1;
 		}
 
 		template <class Float>
@@ -124,11 +131,11 @@ namespace jkj {
 			// result[index] = '0' + output % 10;
 
 			uint32_t i = 0;
-			if constexpr (sizeof(Float) == 8) {
+			JKJ_IF_CONSTEXPR (sizeof(Float) == 8) {
 				// We prefer 32-bit operations, even on 64-bit platforms.
-			// We have at most 17 digits, and uint32_t can store 9 digits.
-			// If output doesn't fit into uint32_t, we cut off 8 digits,
-			// so the rest will fit into uint32_t.
+				// We have at most 17 digits, and uint32_t can store 9 digits.
+				// If output doesn't fit into uint32_t, we cut off 8 digits,
+				// so the rest will fit into uint32_t.
 				if ((output >> 32) != 0) {
 					// Expensive 64-bit division.
 					const uint64_t q = output / 100000000;
@@ -198,7 +205,7 @@ namespace jkj {
 				++buffer;
 				exp = -exp;
 			}
-			if constexpr (sizeof(Float) == 8) {
+			JKJ_IF_CONSTEXPR (sizeof(Float) == 8) {
 				if (exp >= 100) {
 					const int32_t c = exp % 10;
 					memcpy(buffer, radix_100_table + 2 * (exp / 10), 2);
@@ -228,10 +235,10 @@ namespace jkj {
 			return buffer;
 		}
 		
-		char* float_to_chars(unsigned_fp_t<float> v, char* buffer) {
+		char* to_chars(unsigned_fp_t<float> v, char* buffer) {
 			return fp_to_chars_impl(v, buffer);
 		}
-		char* double_to_chars(unsigned_fp_t<double> v, char* buffer) {
+		char* to_chars(unsigned_fp_t<double> v, char* buffer) {
 			return fp_to_chars_impl(v, buffer);
 		}
 	}

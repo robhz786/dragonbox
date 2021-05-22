@@ -22,6 +22,13 @@
 #include <iomanip>
 #include <cstring>
 
+inline void ryu_to_chars(float x, char* dest) {
+	f2s_buffered(x, dest);
+}
+inline void ryu_to_chars(double x, char* dest) {
+	d2s_buffered(x, dest);
+}
+
 template <class Float>
 static bool test_all_shorter_interval_cases_impl()
 {
@@ -41,12 +48,7 @@ static bool test_all_shorter_interval_cases_impl()
 		auto x = jkj::dragonbox::float_bits<Float>{ br }.to_float();
 
 		jkj::dragonbox::to_chars(x, buffer1);
-		if constexpr (std::is_same<Float, float>::value) {
-			f2s_buffered(x, buffer2);
-		}
-		else {
-			d2s_buffered(x, buffer2);
-		}
+		ryu_to_chars(x, buffer2);
 
 		if (std::strcmp(buffer1, buffer2) != 0) {
 			std::cout << "Error detected! [Ryu = " << buffer2

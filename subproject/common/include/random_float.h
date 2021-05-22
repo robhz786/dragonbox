@@ -117,6 +117,13 @@ Float uniformly_randomly_generate_general_float(RandGen& rg)
 	return ieee754_traits::carrier_to_float(bit_representation);
 }
 
+inline void parse_float(const std::string& str, float& x) {
+	x = std::stof(str);
+}
+inline void parse_float(const std::string& str, double& x) {
+	x = std::stod(str);
+}
+
 // This function tries to uniformly randomly generate a float number with the
 // given number of decimal digits, and the end-result is not perfectly bias-free.
 // However, I don't think there is an easy way to do it correctly.
@@ -161,12 +168,7 @@ Float randomly_generate_float_with_given_digits(unsigned int digits, RandGen& rg
 		auto str = std::to_string(sign * significand) + 'e' + std::to_string(exp);
 
 		try {
-			if constexpr (std::is_same<Float, float>::value) {
-				result = std::stof(str);
-			}
-			else {
-				result = std::stod(str);
-			}
+			parse_float(str, result);
 
 			// Discard if a shorter representation exists
 			// We don't need to care about sign and correct rounding here

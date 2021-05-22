@@ -21,6 +21,13 @@
 #include <iomanip>
 #include <string>
 
+inline void parse_float(const std::string& str, float& x) {
+	x = std::stof(str);
+}
+inline void parse_float(const std::string& str, double& x) {
+	x = std::stod(str);
+}
+
 template <class Float>
 static void live_test()
 {
@@ -32,12 +39,7 @@ static void live_test()
 		while (true) {
 			std::getline(std::cin, x_str);
 			try {
-				if constexpr (std::is_same<Float, float>::value) {
-					x = std::stof(x_str);
-				}
-				else {
-					x = std::stod(x_str);
-				}
+				parse_float(x_str, x);
 			}
 			catch (...) {
 				std::cout << "Not a valid input; input again.\n";
@@ -51,14 +53,9 @@ static void live_test()
 		std::cout << "     exponent bits: " << "0x" << std::hex << std::setfill('0')
 			<< xx.extract_exponent_bits() << std::dec
 			<< " (value: " << xx.binary_exponent() << ")\n";
-		std::cout << "  significand bits: " << "0x" << std::hex << std::setfill('0');
-		if constexpr (std::is_same<Float, float>::value) {
-			std::cout << std::setw(8);
-		}
-		else {
-			std::cout << std::setw(16);
-		}
-		std::cout << xx.extract_significand_bits()
+		std::cout << "  significand bits: " << "0x" << std::hex << std::setfill('0')
+			<< std::setw(sizeof(Float) * 2)
+			<< xx.extract_significand_bits()
 			<< " (value: 0x" << xx.binary_significand() << ")\n" << std::dec;
 
 		jkj::dragonbox::to_chars(x, buffer);
@@ -73,11 +70,11 @@ int main()
 		test_double
 	} test = test_double;
 
-	if constexpr (test == test_float) {
+	if (test == test_float) {
 		std::cout << "[Start live test for float's]\n";
 		live_test<float>();
 	}
-	else if constexpr (test == test_double) {
+	else if (test == test_double) {
 		std::cout << "[Start live test for double's]\n";
 		live_test<double>();
 	}

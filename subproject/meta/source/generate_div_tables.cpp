@@ -24,8 +24,8 @@
 using namespace jkj::dragonbox::detail;
 using namespace jkj::dragonbox::detail::div;
 
-template <class UInt, unsigned int bit_width = value_bits<UInt>>
-constexpr UInt modular_inverse(UInt a) noexcept {
+template <class UInt>
+UInt modular_inverse(UInt a, unsigned int bit_width = value_bits<UInt>) noexcept {
 	// By Euler's theorem, a^phi(2^n) == 1 (mod 2^n),
 	// where phi(2^n) = 2^(n-1), so the modular inverse of a is
 	// a^(2^(n-1) - 1) = a^(1 + 2 + 2^2 + ... + 2^(n-2)).
