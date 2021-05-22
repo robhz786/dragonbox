@@ -26,7 +26,8 @@
 #define JKJ_FORCEINLINE inline
 #endif
 
-namespace jkj::dragonbox {
+namespace jkj {
+namespace dragonbox {
 	namespace to_chars_detail {
 		static constexpr char radix_100_table[] = {
 			'0', '0', '0', '1', '0', '2', '0', '3', '0', '4',
@@ -408,4 +409,5 @@ namespace jkj::dragonbox {
 			return buffer;
 		}
 	}
+}
 }

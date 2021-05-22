@@ -43,7 +43,8 @@
 #include <intrin.h>
 #endif
 
-namespace jkj::dragonbox {
+namespace jkj {
+namespace dragonbox {
 	namespace detail {
 		template <class T>
 		constexpr std::size_t physical_bits = sizeof(T) * std::numeric_limits<unsigned char>::digits;
@@ -3426,6 +3427,7 @@ namespace jkj::dragonbox {
 		policy_holder::handle_sign(s, ret);
 		return ret;
 	}
+}
 }
 
 #undef JKJ_HAS_COUNTR_ZERO_INTRINSIC

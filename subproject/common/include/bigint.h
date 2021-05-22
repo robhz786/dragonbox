@@ -33,7 +33,8 @@
 #include <cassert>
 #include <iterator>
 
-namespace jkj::dragonbox {
+namespace jkj{
+namespace dragonbox {
 	namespace detail {
 		constexpr void inspect(std::uint64_t& x, std::size_t& ret, int shft) noexcept {
 			if ((x >> shft) != 0) {
@@ -930,6 +931,7 @@ namespace jkj::dragonbox {
 			}
 		};
 	}
+}
 }
 
 #endif

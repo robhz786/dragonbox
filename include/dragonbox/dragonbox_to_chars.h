@@ -20,7 +20,8 @@
 
 #include "dragonbox/dragonbox.h"
 
-namespace jkj::dragonbox {
+namespace jkj {
+namespace dragonbox {
 	namespace to_chars_detail {
 		template <class Float, class FloatTraits>
 		extern char* to_chars(typename FloatTraits::carrier_uint significand, int exponent, char* buffer) noexcept;
@@ -108,6 +109,7 @@ namespace jkj::dragonbox {
 		// format == ieee754_format::binary64
 		// sign(1) + significand(17) + decimal_point(1) + exp_marker(1) + exp_sign(1) + exp(3)
 		(1 + 17 + 1 + 1 + 1 + 3);
+}
 }
 
 #endif
