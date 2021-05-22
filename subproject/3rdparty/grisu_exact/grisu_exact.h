@@ -2359,9 +2359,10 @@ namespace jkj {
 			}
 
 			template <grisu_exact_rounding_modes::tag_t tag>
-			static std::uint32_t compute_delta([[maybe_unused]] bool is_edge_case,
+			static std::uint32_t compute_delta(bool is_edge_case,
 				cache_entry_type const& cache, int minus_beta) noexcept
 			{
+				(void)is_edge_case;
 				constexpr auto q_mp_m1 = extended_precision - precision - 1;
 				constexpr auto intermediate_precision =
 					sizeof(Float) == 4 ? cache_precision : extended_precision;
@@ -2418,9 +2419,11 @@ namespace jkj {
 				other
 			};
 			template <integer_check_case_id case_id>
-			static bool is_product_integer([[maybe_unused]] extended_significand_type f,
-				int exponent, [[maybe_unused]] int minus_k) noexcept
+			static bool is_product_integer(extended_significand_type f,
+				int exponent, int minus_k) noexcept
 			{
+				(void)f;
+				(void)minus_k;
 				// Case I: f = fc - 2^(q-p-3), Fw = 1 and Ew != Emin
 				if constexpr (case_id == integer_check_case_id::fc_minus_2_to_the_q_mp_m3_edge) {
 					return exponent >= integer_check_exponent_lower_bound_for_q_mp_m3 &&
@@ -2497,9 +2500,12 @@ namespace jkj {
 			};
 
 			template <grisu_exact_rounding_modes::tag_t tag>
-			static bool equal_fractional_parts([[maybe_unused]] extended_significand_type fl,
-				[[maybe_unused]] int exponent, [[maybe_unused]] int minus_k) noexcept
+			static bool equal_fractional_parts(extended_significand_type fl,
+				int exponent, int minus_k) noexcept
 			{
+				(void)fl;
+				(void)exponent;
+				(void)minus_k;
 				if constexpr (tag == grisu_exact_rounding_modes::to_nearest_tag)
 				{
 					// Generic case
@@ -2633,8 +2639,9 @@ namespace jkj {
 	namespace grisu_exact_case_handlers {
 		struct assert_finite {
 			template <class Float>
-			void operator()([[maybe_unused]] bit_representation_t<Float> br) const
+			void operator()(bit_representation_t<Float> br) const
 			{
+				(void)br;
 				assert(br.is_finite());
 			}
 		};
