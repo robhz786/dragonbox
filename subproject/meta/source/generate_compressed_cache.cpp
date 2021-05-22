@@ -22,11 +22,10 @@
 #include <iostream>
 #include <vector>
 
-int main()
+
+std::vector<std::uint32_t> generate_error_table()
 {
 	using namespace jkj::dragonbox::detail;
-
-	std::cout << "[Generating error table for compressed cache...]\n";
 
 	std::vector<std::uint32_t> results;
 
@@ -102,11 +101,47 @@ int main()
 	if (error_count != 0) {
 		results.push_back(error);
 	}
+	return results;
+}
+
+
+int main()
+{
+	using namespace jkj::dragonbox::detail;
+	using namespace jkj::dragonbox;
+
+	std::cout << "[Generating compressed cache...]\n";
 
 	// Print out
-	std::ofstream out{ "results/binary64_compressed_cache_error_table.txt" };
-	out << "static constexpr std::uint32_t errors[] = {\n\t";
-	for (std::size_t i = 0; i < results.size(); ++i) {
+	std::ofstream out{ "results/binary64_compressed_cache.txt" };
+
+	constexpr int compression_ratio = 27;
+	constexpr std::size_t cache_size =
+		(cache_holder<ieee754_binary64>::max_k -
+		cache_holder<ieee754_binary64>::min_k + compression_ratio) / compression_ratio;
+
+	out << "static constexpr int compression_ratio = " << compression_ratio << ";\n"
+			<< "static_assert(cache_size == " << cache_size << ", \"\");\n"
+			<< "static const wuint::uint128 cache[] = {\n";
+	for (std::size_t i = 0; i < cache_size; ++i) {
+		auto value = cache_holder<ieee754_binary64>::cache(i * compression_ratio);
+		out << "\t{ 0x" << std::hex << std::setw(16) << std::setfill('0') << value.high()
+			<< ", 0x" << std::hex << std::setw(16) << std::setfill('0') << value.low()
+			<< " }" << (i + 1 == cache_size ? "\n": ",\n");
+	}
+	out << "};\n\n"
+		<< "static const std::uint64_t pow5_table[] = {\n\t"
+		<< std::dec;
+	std::uint64_t p = 1;
+	for (std::size_t i = 0; i < compression_ratio; ++i) {
+		out << p << "ull, ";
+		p *= 5;
+	}
+
+	out << "};\n\n"
+	 << "static const std::uint32_t errors[] = {\n\t";
+	auto errors = generate_error_table();
+	for (std::size_t i = 0; i < errors.size(); ++i) {
 		if (i != 0) {
 			if (i % 5 == 0) {
 				out << ",\n\t";
@@ -115,7 +150,7 @@ int main()
 				out << ", ";
 			}
 		}
-		out << std::hex << std::setfill('0') << "0x" << std::setw(8) << results[i];
+		out << std::hex << std::setfill('0') << "0x" << std::setw(8) << errors[i];
 	}
 	out << "\n};";
 
