@@ -136,7 +136,8 @@ namespace jkj {
 				// We have at most 17 digits, and uint32_t can store 9 digits.
 				// If output doesn't fit into uint32_t, we cut off 8 digits,
 				// so the rest will fit into uint32_t.
-				if ((output >> 32) != 0) {
+				constexpr unsigned _32 = sizeof(Float) * 4; // silent a warning
+				if ((output >> _32) != 0) {
 					// Expensive 64-bit division.
 					const uint64_t q = output / 100000000;
 					uint32_t output2 = ((uint32_t)output) - 100000000 * ((uint32_t)q);

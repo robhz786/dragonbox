@@ -2902,6 +2902,7 @@ namespace dragonbox {
 					// ret_value.significand += r / small_divisor
 					// and return, but we need to take care of the case that the resulting
 					// value is exactly the right endpoint, while that is not included in the interval.
+					(void) small_divisor;
 					if (!interval_type.include_right_endpoint()) {
 						// Is r divisible by 10^kappa?
 						if (div::check_divisibility_and_divide_by_pow10<kappa>(r) &&
@@ -3071,7 +3072,7 @@ namespace dragonbox {
 				//////////////////////////////////////////////////////////////////////
 
 				constexpr auto big_divisor = compute_power<kappa + 1>(std::uint32_t(10));
-				constexpr auto small_divisor = compute_power<kappa>(std::uint32_t(10));
+				// constexpr auto small_divisor = compute_power<kappa>(std::uint32_t(10));
 
 				// Using an upper bound on xi, we might be able to optimize the division
 				// better than the compiler; we are computing xi / big_divisor here.
@@ -3161,7 +3162,7 @@ namespace dragonbox {
 				//////////////////////////////////////////////////////////////////////
 
 				constexpr auto big_divisor = compute_power<kappa + 1>(std::uint32_t(10));
-				constexpr auto small_divisor = compute_power<kappa>(std::uint32_t(10));
+				// constexpr auto small_divisor = compute_power<kappa>(std::uint32_t(10));
 
 				// Using an upper bound on zi, we might be able to optimize the division
 				// better than the compiler; we are computing zi / big_divisor here.

@@ -21,6 +21,15 @@
 #include <iomanip>
 #include <string>
 
+#if defined(__cpp_if_constexpr)
+#	define JKJ_IF_CONSTEXPR if constexpr
+#else
+#	define JKJ_IF_CONSTEXPR if
+#	if defined(_MSC_VER)
+#		pragma warning( disable : 4127 ) // "Conditional expression is constant"
+#	endif
+#endif
+
 inline void parse_float(const std::string& str, float& x) {
 	x = std::stof(str);
 }
@@ -70,11 +79,11 @@ int main()
 		test_double
 	} test = test_double;
 
-	if (test == test_float) {
+	JKJ_IF_CONSTEXPR(test == test_float) {
 		std::cout << "[Start live test for float's]\n";
 		live_test<float>();
 	}
-	else if (test == test_double) {
+	else JKJ_IF_CONSTEXPR(test == test_double) {
 		std::cout << "[Start live test for double's]\n";
 		live_test<double>();
 	}

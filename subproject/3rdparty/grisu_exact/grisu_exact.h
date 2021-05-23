@@ -210,7 +210,7 @@ namespace jkj {
 #elif defined(_MSC_VER) && defined(_M_X64)
 			unsigned long index;
 			JKJ_IF_CONSTEXPR (std::is_same<UInt, std::uint32_t>::value) {
-				_BitScanForward(&index, x);
+				_BitScanForward(&index, static_cast<unsigned long>(x));
 			}
 			else {
 				_BitScanForward64(&index, x);
@@ -1855,7 +1855,7 @@ namespace jkj {
 								extended_precision >> minus_beta);
 						}
 						else {
-							zi = cache64 >> minus_beta;
+							zi = extended_significand_type(cache64 >> minus_beta);
 						}
 					}
 					else {
