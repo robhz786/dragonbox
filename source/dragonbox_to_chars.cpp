@@ -85,7 +85,7 @@ namespace dragonbox {
 		};
 		template <std::uint32_t divisor, unsigned int max_precision, unsigned int additional_precision>
 		static constexpr quotient_remainder_pair fast_div(std::uint32_t n) noexcept {
-			static_assert(max_precision > 0 && max_precision <= 32);
+			static_assert(max_precision > 0 && max_precision <= 32, "");
 			assert(n < std::uint32_t(1u << max_precision));
 
 			constexpr auto left_end = std::uint32_t(
@@ -96,9 +96,9 @@ namespace dragonbox {
 			);
 
 			// Ensures sufficient precision.
-			static_assert(left_end <= right_end);
+			static_assert(left_end <= right_end, "");
 			// Ensures no overflow.
-			static_assert(left_end <= std::uint32_t(1u << (32 - max_precision)));
+			static_assert(left_end <= std::uint32_t(1u << (32 - max_precision)), "");
 
 			auto quotient = (n * left_end) >> (max_precision + additional_precision);
 			auto remainder = n - divisor * quotient;
@@ -122,32 +122,31 @@ namespace dragonbox {
 #endif
 				s32 /= 1'0000;
 
-				// c1 = c / 100; c2 = c % 100;
-				auto [c1, c2] = fast_div<100, 14, 5>(c);
+				// div.quotient = c / 100; div.remainder = c % 100;
+				auto div = fast_div<100, 14, 5>(c);
 
 				std::memcpy(buffer + remaining_digits_minus_1,
-					&radix_100_table[c2 * 2], 2);
+					&radix_100_table[div.remainder * 2], 2);
 				std::memcpy(buffer + remaining_digits_minus_1 - 2,
-					&radix_100_table[c1 * 2], 2);
+					&radix_100_table[div.quotient * 2], 2);
 				remaining_digits_minus_1 -= 4;
 			}
 			if (remaining_digits_minus_1 >= 2) {
-				// c1 = s32 / 100; c2 = s32 % 100;
-				auto [c1, c2] = fast_div<100, 14, 5>(s32);
-				s32 = c1;
+				// div.quotient = s32 / 100; div.remainder = s32 % 100;
+				auto div = fast_div<100, 14, 5>(s32);
+				s32 = div.quotient;
 
 				std::memcpy(buffer + remaining_digits_minus_1,
-					&radix_100_table[c2 * 2], 2);
+					&radix_100_table[div.remainder * 2], 2);
 				remaining_digits_minus_1 -= 2;
 			}
 			if (remaining_digits_minus_1 > 0) {
 				assert(remaining_digits_minus_1 == 1);
-				// d1 = s32 / 10; d2 = s32 % 10;
-				auto [d1, d2] = fast_div<10, 7, 3>(s32);
+				auto div = fast_div<10, 7, 3>(s32);
 
-				buffer[0] = char('0' + d1);
+				buffer[0] = char('0' + div.quotient);
 				buffer[1] = '.';
-				buffer[2] = char('0' + d2);
+				buffer[2] = char('0' + div.remainder);
 				buffer += exponent_position;
 			}
 			else {
@@ -216,9 +215,13 @@ namespace dragonbox {
 					r /= 1'0000;
 
 					// c1 = r / 100; c2 = r % 100;
-					auto [c1, c2] = fast_div<100, 14, 5>(r);
 					// c3 = c / 100; c4 = c % 100;
-					auto [c3, c4] = fast_div<100, 14, 5>(c);
+					auto div1 = fast_div<100, 14, 5>(r);
+					auto div2 = fast_div<100, 14, 5>(c);
+					auto c1 = div1.quotient;
+					auto c2 = div1.remainder;
+					auto c3 = div2.quotient;
+					auto c4 = div2.remainder;
 
 					auto tz = trailing_zero_count_table[c4];
 					if (tz == 0) {
@@ -313,7 +316,9 @@ namespace dragonbox {
 				s32 /= 1'0000;
 
 				// c1 = c / 100; c2 = c % 100;
-				auto [c1, c2] = fast_div<100, 14, 5>(c);
+				auto div = fast_div<100, 14, 5>(c);
+				auto c1 = div.quotient;
+				auto c2 = div.remainder;
 
 				if (may_have_more_trailing_zeros) {
 					auto tz = trailing_zero_count_table[c2];
@@ -358,9 +363,10 @@ namespace dragonbox {
 				remaining_digits_minus_1 -= 4;
 			}
 			if (remaining_digits_minus_1 >= 2) {
-				// c1 = s32 / 100; c2 = s32 % 100;
-				auto [c1, c2] = fast_div<100, 14, 5>(s32);
-				s32 = c1;
+				// s32 = s32 / 100; c2 = s32 % 100;
+				auto div = fast_div<100, 14, 5>(s32);
+				s32 = div.quotient;
+				auto c2 = div.remainder;
 
 				if (may_have_more_trailing_zeros) {
 					auto tz = trailing_zero_count_table[c2];
@@ -386,7 +392,9 @@ namespace dragonbox {
 			if (remaining_digits_minus_1 > 0) {
 				assert(remaining_digits_minus_1 == 1);
 				// d1 = s32 / 10; d2 = s32 % 10;
-				auto [d1, d2] = fast_div<10, 7, 3>(s32);
+				auto div = fast_div<10, 7, 3>(s32);
+				auto d1 = div.quotient;
+				auto d2 = div.remainder;
 
 				buffer[0] = char('0' + d1);
 				if (may_have_more_trailing_zeros && d2 == 0) {
@@ -423,7 +431,9 @@ namespace dragonbox {
 
 			if (exponent >= 100) {
 				// d1 = exponent / 10; d2 = exponent % 10;
-				auto [d1, d2] = fast_div<10, 10, 3>(std::uint32_t(exponent));
+				auto div = fast_div<10, 10, 3>(std::uint32_t(exponent));
+				auto d1 = div.quotient;
+				auto d2 = div.remainder;
 				std::memcpy(buffer, &radix_100_table[d1 * 2], 2);
 				buffer[2] = (char)('0' + d2);
 				buffer += 3;

@@ -3455,8 +3455,8 @@ namespace dragonbox {
 						// Hence, shorter_interval_case will return 2.225'073'858'507'201'4 * 10^-308.
 						// This is indeed of the shortest length, and it is the unique one
 						// closest to the true value among valid representations of the same length.
-						static_assert(std::is_same_v<format, ieee754_binary32> ||
-							std::is_same_v<format, ieee754_binary64>);
+						static_assert(std::is_same<format, ieee754_binary32>::value ||
+							std::is_same<format, ieee754_binary64>::value, "");
 
 						if (two_fc == 0) {
 							return decltype(interval_type_provider)::invoke_shorter_interval_case(
@@ -3507,8 +3507,6 @@ namespace dragonbox {
 						>(two_fc, exponent);
 				}
 				else {
-					static_assert(tag == decimal_to_binary_rounding::tag_t::right_closed_directed);
-
 					bool shorter_interval = false;
 
 					// Is the input a normal number?
